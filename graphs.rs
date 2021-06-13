@@ -37,7 +37,7 @@ pub mod graph {
       self.find_edge(edge.to(), edge.from())
     }
     
-    fn walk<F: FnMut(&mut Walker, usize)>(&self, from: usize, mut f: F) {
+    fn walk(&self, from: usize, mut f: impl FnMut(&mut Walker, usize)) {
       let mut walker = Walker::new(self.n());
       walker.go_next(from);
       while let Some(u) = walker.next() { (f)(&mut walker, u) }
@@ -46,16 +46,14 @@ pub mod graph {
     /// do DFS in preorder
     /// edge is passed to `f`
     /// Note that `from` vertex is not passed to `f`
-    fn dfs<F: FnMut(&Self::Edge)>(&self, from: usize, mut f: F) {
+    fn dfs(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
       self.walk(from, |walker, u| self.each_edge_from(u, |e| if walker.go_next(self.edge(e).to()) { (f)(self.edge(e)) } ) );
     }
 
     fn eulertour(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
       let mut visited = vec![false; self.m()];
       let mut stack = self.edges_from(from);
-      for &e in &stack {
-        visited[e] = true;
-      }
+      for &e in &stack { visited[e] = true }
       while let Some(e) = stack.pop() {
         (f)(self.edge(e));
         self.each_edge_from(self.edge(e).to(), |d| {
@@ -70,7 +68,7 @@ pub mod graph {
     /// do BFS
     /// edge is passed to `f`
     /// Note that `from` vertex is not passed to `f`
-    fn bfs<F: FnMut(&Self::Edge)>(&self, from: usize, mut f: F) {
+    fn bfs(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
       self.walk(from, |walker, u| self.each_edge_from(u, |e| if walker.go_later(self.edge(e).to()) { (f)(self.edge(e)) } ) );
     }
     
@@ -81,7 +79,7 @@ pub mod graph {
       dist
     }
 
-    fn shortest_path_bfs_by<C: Measure, F: FnMut(&Self::Edge, C) -> Option<C>>(&self, from: usize, mut f: F) -> Vec<Option<C>> {
+    fn shortest_path_bfs_by<C: Measure>(&self, from: usize, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
       let mut dist = vec![None; self.n()];
       dist[from] = Some(C::zero());
       self.walk(from, |walker, u| self.each_edge_from(u, |e| {
@@ -95,7 +93,7 @@ pub mod graph {
     }
 
     /// `f(e, d)? >= d`
-    fn shortest_path_dijkstra_by<C: Measure, F: FnMut(&Self::Edge, C) -> Option<C>>(&self, from: usize, mut f: F) -> Vec<Option<C>> {
+    fn shortest_path_dijkstra_by<C: Measure>(&self, from: usize, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
       let mut dist = vec![None; self.n()];
       let mut pq = BinaryHeap::new();
       dist[from] = Some(C::zero());
@@ -113,7 +111,7 @@ pub mod graph {
       self.shortest_path_dijkstra_by(from, |edge, d| Some(d + *edge.weight()) )
     }
 
-    fn shortest_path_spfa_by<C: Measure, F: FnMut(&Self::Edge, C) -> Option<C>>(&self, from: usize, mut f: F) -> Vec<Option<C>> {
+    fn shortest_path_spfa_by<C: Measure>(&self, from: usize, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
       let mut dist = vec![None; self.n()];
       dist[from] = Some(C::zero());
       let mut q = Uniqueue::new();
@@ -339,15 +337,11 @@ pub mod graph {
       
       fn each_edge_mut_from(&mut self, from: usize, mut f: impl FnMut(&mut Self::Edge)) {
         assert!(from < self.n());
-        for &e in &self.vertices[from].edges {
-          (f)(&mut self.edges[e]);
-        }
+        for &e in &self.vertices[from].edges { (f)(&mut self.edges[e]) }
       }
       fn each_adjacent_vertex_mut(&mut self, from: usize, mut f: impl FnMut(&mut Self::Vertex)) {
         assert!(from < self.n());
-        for v in self.adjacent_vertices(from) {
-          (f)(&mut self.vertices[v]);
-        }
+        for v in self.adjacent_vertices(from) { (f)(&mut self.vertices[v]) }
       }
     }
   }
@@ -407,7 +401,7 @@ pub mod graph {
     
     fn go_next(&mut self, v: usize) -> bool {
       assert!(v < self.visited.len());
-      if self.visited[v] { return false; }
+      if self.visited[v] { return false }
       self.visited[v] = true;
       self.queue.push_back(v);
       true
@@ -415,7 +409,7 @@ pub mod graph {
     
     fn go_later(&mut self, v: usize) -> bool {
       assert!(v < self.visited.len());
-      if self.visited[v] { return false; }
+      if self.visited[v] { return false }
       self.visited[v] = true;
       self.queue.push_front(v);
       true
@@ -428,20 +422,14 @@ pub mod graph {
   }
   impl Iterator for Walker {
     type Item = usize;
-    fn next(&mut self) -> Option<Self::Item> {
-      self.queue.pop_back()
-    }
+    fn next(&mut self) -> Option<Self::Item> { self.queue.pop_back() }
   }
 
   impl<E> IntoEdge<E> for (usize, usize, E) {
-    fn into_edge(self) -> (usize, usize, E) {
-      self
-    }
+    fn into_edge(self) -> (usize, usize, E) { self }
   }
   impl<E: Default> IntoEdge<E> for (usize, usize) {
-    fn into_edge(self) -> (usize, usize, E) {
-      (self.0, self.1, Default::default())
-    }
+    fn into_edge(self) -> (usize, usize, E) { (self.0, self.1, Default::default()) }
   }
   
   pub mod measure {
@@ -451,28 +439,24 @@ pub mod graph {
     pub trait AssignOps: Sized + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign {}
     pub trait Measure: std::fmt::Debug + Num + Default + Ord + Copy + AssignOps + std::iter::Sum {
       fn chmin(&mut self, other: Self) -> &mut Self {
-        if *self > other {
-          *self = other;
-        }
+        if *self > other { *self = other }
         self
       }
       fn chmax(&mut self, other: Self) -> &mut Self {
-        if *self < other {
-          *self = other;
-        }
+        if *self < other { *self = other }
         self
       }
-      fn if_chmin<F: FnOnce()>(&mut self, other: Self, procedure: F) -> &mut Self {
+      fn if_chmin(&mut self, other: Self, f: impl FnOnce()) -> &mut Self {
         if *self > other {
           *self = other;
-          (procedure)();
+          (f)();
         }
         self
       }
-      fn if_chmax<F: FnOnce()>(&mut self, other: Self, procedure: F) -> &mut Self {
+      fn if_chmax(&mut self, other: Self, f: impl FnOnce()) -> &mut Self {
         if *self < other {
           *self = other;
-          (procedure)();
+          (f)();
         }
         self
       }
@@ -493,31 +477,25 @@ pub mod graph {
         self.insert(value);
         self
       }
-      fn and_if<F: FnOnce(T) -> bool>(self, predicate: F) -> bool {
-        self.is_some() && predicate(self.unwrap())
-      }
-      fn if_chmin<F: FnOnce()>(&mut self, other: T, procedure: F) -> &mut Self where Self: Clone, T: Clone + Ord {
+      fn and_if(self, f: impl FnOnce(T) -> bool) -> bool { self.is_some() && (f)(self.unwrap()) }
+      fn if_chmin(&mut self, other: T, f: impl FnOnce()) -> &mut Self where Self: Clone, T: Clone + Ord {
         if !self.is_some() || self.clone().unwrap() > other {
           self.insert(other);
-          procedure();
+          (f)();
         }
         self
       }
-      fn if_chmax<F: FnOnce()>(&mut self, other: T, procedure: F) -> &mut Self where Self: Clone, T: Clone + Ord {
+      fn if_chmax(&mut self, other: T, f: impl FnOnce()) -> &mut Self where Self: Clone, T: Clone + Ord {
         if !self.is_some() || self.clone().unwrap() < other {
           self.insert(other);
-          procedure();
+          (f)();
         }
         self
       }
     }
     impl<T> OptionUtil<T> for Option<T> {
-      fn unwrap(self) -> T {
-        Option::<T>::unwrap(self)
-      }
-      fn is_some(&self) -> bool {
-        Option::<T>::is_some(self)
-      }
+      fn unwrap(self) -> T { Option::<T>::unwrap(self) }
+      fn is_some(&self) -> bool { Option::<T>::is_some(self) }
       fn insert(&mut self, value: T) -> &mut T {
         *self = Some(value);
         self.as_mut().unwrap()
@@ -527,7 +505,6 @@ pub mod graph {
     impl<T: Sized + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign> AssignOps for T {}
     impl<T: std::fmt::Debug + Copy + Ord + Default + Num + AssignOps + std::iter::Sum> Measure for T {}
     impl<T: Signed + Measure> MeasureSigned for T {}
-    
     
     fn zip<T, U>(left: Option<T>, right: Option<U>) -> Option<(T, U)> {
       left.and_then(|x| right.map(|y| (x, y) ))
