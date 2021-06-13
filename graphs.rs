@@ -169,7 +169,7 @@ pub mod graph {
   pub trait GraphMut<E>: Graph<E> where Self::Vertex: VertexMut, Self::Edge: EdgeMut<E> {
     fn add_vertex(&mut self) -> usize;
     fn add_vertices(&mut self, n: usize) -> Vec<usize> {
-      (0 .. n).map(|weight| self.add_vertex() ).collect::<Vec<_>>()
+      (0 .. n).map(|_| self.add_vertex() ).collect::<Vec<_>>()
     }
     fn add_arc(&mut self, from: usize, to: usize, weight: E) -> usize;
     fn connect(&mut self, from: usize, to: usize) -> usize where E: Default {
@@ -198,8 +198,8 @@ pub mod graph {
     fn vertex_mut(&mut self, id: usize) -> &mut Self::Vertex;
     fn edge_mut(&mut self, id: usize) -> &mut Self::Edge;
     
-    fn each_edge_mut_from<F: FnMut(&mut Self::Edge)>(&mut self, from: usize, f: F);
-    fn each_adjacent_vertex_mut<F: FnMut(&mut Self::Vertex)>(&mut self, from: usize, f: F);
+    fn each_edge_mut_from(&mut self, from: usize, f: impl FnMut(&mut Self::Edge));
+    fn each_adjacent_vertex_mut(&mut self, from: usize, f: impl FnMut(&mut Self::Vertex));
   }
   
   pub trait Vertex {}
@@ -337,13 +337,13 @@ pub mod graph {
         &mut self.edges[id]
       }
       
-      fn each_edge_mut_from<F: FnMut(&mut Self::Edge)>(&mut self, from: usize, mut f: F) {
+      fn each_edge_mut_from(&mut self, from: usize, mut f: impl FnMut(&mut Self::Edge)) {
         assert!(from < self.n());
         for &e in &self.vertices[from].edges {
           (f)(&mut self.edges[e]);
         }
       }
-      fn each_adjacent_vertex_mut<F: FnMut(&mut Self::Vertex)>(&mut self, from: usize, mut f: F) {
+      fn each_adjacent_vertex_mut(&mut self, from: usize, mut f: impl FnMut(&mut Self::Vertex)) {
         assert!(from < self.n());
         for v in self.adjacent_vertices(from) {
           (f)(&mut self.vertices[v]);
@@ -565,6 +565,5 @@ pub mod graph {
   use std::collections::*;
   use std::cmp::*;
   use itertools::*;
-  use num_traits::*;
   use rustc_hash::*;
 }
