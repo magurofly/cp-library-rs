@@ -1,5 +1,5 @@
 pub mod graphs {
-  // v0.0.2
+  // Last Update: 2021-06-14 19:00
   #![allow(unused_imports, dead_code)]
   
   pub use vec_graph::VecGraph;
@@ -39,7 +39,7 @@ pub mod graphs {
     }
     
     fn walk(&self, from: usize, mut f: impl FnMut(&mut Walker, usize)) {
-      let mut walker = Walker::new(self.n());
+      let mut walker = Walker::new();
       walker.go_next(from);
       while let Some(u) = walker.next() { (f)(&mut walker, u) }
     }
@@ -64,6 +64,22 @@ pub mod graphs {
           }
         });
       }
+    }
+    
+    fn connected_components(&self) -> Vec<Vec<usize>> {
+      let mut components = Vec::new();
+      let mut walker = Walker::new();
+      for t in 0 .. self.n() {
+        if walker.go_next(t) {
+          let mut component = vec![];
+          while let Some(u) = walker.next() { 
+            component.push(u);
+            self.each_adjacent_vertex(u, |v| { walker.go_next(v); });
+          }
+          components.push(component);
+        }
+      }
+      components
     }
     
     /// do BFS
@@ -221,7 +237,7 @@ pub mod graphs {
   
   #[derive(Debug)]
   pub struct Walker {
-    visited: Vec<bool>,
+    visited: IHashSet<usize>,
     queue: VecDeque<usize>,
   }
   
@@ -396,33 +412,32 @@ pub mod graphs {
   }
   
   impl Walker {
-    fn new(n: usize) -> Self {
+    fn new() -> Self {
       Self {
-        visited: vec![false; n],
+        visited: FxHashSet::default(),
         queue: VecDeque::new(),
       }
     }
     
     fn go_next(&mut self, v: usize) -> bool {
-      assert!(v < self.visited.len());
-      if self.visited[v] { return false }
-      self.visited[v] = true;
-      self.queue.push_back(v);
-      true
+      if self.visited.insert(v) {
+        self.queue.push_back(v);
+        return true;
+      }
+      false
     }
     
     fn go_later(&mut self, v: usize) -> bool {
-      assert!(v < self.visited.len());
-      if self.visited[v] { return false }
-      self.visited[v] = true;
-      self.queue.push_front(v);
-      true
+      if self.visited.insert(v) {
+        self.queue.push_front(v);
+        return true;
+      }
+      false
     }
     
-    fn forget(&mut self, v: usize) {
-      assert!(v < self.visited.len());
-      self.visited[v] = false;
-    }
+    fn forget(&mut self, v: usize) -> bool { self.visited.remove(&v) }
+
+    fn is_visited(&self, v: usize) -> bool { self.visited.contains(&v) }
   }
   impl Iterator for Walker {
     type Item = usize;
