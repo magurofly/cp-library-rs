@@ -1,6 +1,7 @@
-pub mod graph {
+pub mod graphs {
+  // v0.0.2
   #![allow(unused_imports, dead_code)]
-
+  
   pub use vec_graph::VecGraph;
   pub use sub_graph::SubGraph;
   
@@ -230,6 +231,9 @@ pub mod graph {
     #[derive(Debug, Clone, Default)]
     pub struct Vertex {
       edges: Vec<usize>,
+    }
+    impl Vertex {
+      pub fn edges(&self) -> &Vec<usize> { &self.edges }
     }
     impl super::Vertex for Vertex {}
     impl super::VertexMut for Vertex {}
