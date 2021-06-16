@@ -1,5 +1,5 @@
 pub mod graphs {
-  // Last Update: 2021-06-14 19:00
+  // Last Update: 2021-06-16 16:12
   #![allow(unused_imports, dead_code)]
   
   pub use vec_graph::VecGraph;
@@ -148,12 +148,32 @@ pub mod graphs {
       self.shortest_path_spfa_by(from, |edge, d| Some(d + *edge.weight()) )
     }
 
-    // fn shortest_paths_floyd_warshall(&self, loops: bool) -> Vec<Vec<Option<C>>> {
-    //   let mut dist = vec![vec![None; self.n()]; self.n()];
-    //   for i in 0 .. self.n() {
+    fn shortest_paths_floyd_warshall_by<C: Measure>(&self, loops: bool, mut f: impl FnMut(&Self::Edge) -> Option<C>) -> Vec<Vec<Option<C>>> {
+      let mut dist = vec![vec![None; self.n()]; self.n()];
+      for e in 0 .. self.m() {
+        let edge = self.edge(e);
+        dist[edge.from()][edge.to()] = (f)(edge);
+      }
+      if loops {
+        for i in 0 .. self.n() {
+          dist[i][i] = Some(C::zero());
+        }
+      }
+      for k in 0 .. self.n() {
+        for i in 0 .. self.n() {
+          for j in 0 .. self.n() {
+            if let Some((d1, d2)) = dist[i][k].zip(dist[k][j]) {
+              dist[i][j].chmin(d1 + d2);
+            }
+          }
+        }
+      }
+      dist
+    }
 
-    //   }
-    // }
+    fn shortest_paths_floyd_warshall(&self) -> Vec<Vec<Option<E>>> where E: Measure {
+      self.shortest_paths_floyd_warshall_by(true, |edge| Some(*edge.weight()) )
+    }
 
     fn minimum_spanning_tree_prim_by<C: Measure, F: FnMut(&Self::Edge) -> Option<C>>(&self, root: usize, mut f: F) -> (C, SubGraph<'_, E, Self>) {
       let mut cost = C::zero();
