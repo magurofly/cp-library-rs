@@ -1,11 +1,11 @@
 pub mod graphs {
-  // Last Update: 2021-06-16 16:12
+  // Last Update: 2021-06-17 20:20
   #![allow(unused_imports, dead_code)]
   
-  pub use vec_graph::VecGraph;
+  pub use dic_graph::{DicGraph, VecGraph, HashGraph};
   pub use sub_graph::SubGraph;
   
-  pub trait Graph<E> {
+  pub trait Graph<E = ()> {
     type Vertex: Vertex;
     type Edge: Edge<E>;
     
@@ -162,7 +162,7 @@ pub mod graphs {
       for k in 0 .. self.n() {
         for i in 0 .. self.n() {
           for j in 0 .. self.n() {
-            if let Some((d1, d2)) = dist[i][k].zip(dist[k][j]) {
+            if let Some((d1, d2)) = self::measure::zip(dist[i][k], dist[k][j]) {
               dist[i][j].chmin(d1 + d2);
             }
           }
@@ -201,7 +201,7 @@ pub mod graphs {
     }
   }
   
-  pub trait GraphMut<E>: Graph<E> where Self::Vertex: VertexMut, Self::Edge: EdgeMut<E> {
+  pub trait GraphMut<E = ()>: Graph<E> where Self::Vertex: VertexMut, Self::Edge: EdgeMut<E> {
     fn add_vertex(&mut self) -> usize;
     fn add_vertices(&mut self, n: usize) -> Vec<usize> {
       (0 .. n).map(|_| self.add_vertex() ).collect::<Vec<_>>()
@@ -239,7 +239,7 @@ pub mod graphs {
   
   pub trait Vertex {}
   
-  pub trait Edge<E> {
+  pub trait Edge<E = ()> {
     fn from(&self) -> usize;
     fn to(&self) -> usize;
     fn weight(&self) -> &E;
@@ -247,22 +247,29 @@ pub mod graphs {
 
   pub trait VertexMut: Vertex {}
 
-  pub trait EdgeMut<E>: Edge<E> {
+  pub trait EdgeMut<E = ()>: Edge<E> {
     fn weight_mut(&mut self) -> &mut E;
   }
 
-  pub trait IntoEdge<E> {
+  pub trait IntoEdge<E = ()> {
     fn into_edge(self) -> (usize, usize, E);
   }
   
   #[derive(Debug)]
   pub struct Walker {
-    visited: IHashSet<usize>,
+    visited: FxHashSet<usize>,
     queue: VecDeque<usize>,
   }
   
-  pub mod vec_graph {
+  pub mod dic_graph {
+    use std::marker::PhantomData;
+    use std::collections::*;
+    use rustc_hash::*;
+
     use super::{Graph, GraphMut, measure::Measure};
+
+    pub type VecGraph<E = ()> = DicGraph<Vec<Vertex>, E>;
+    pub type HashGraph<E = ()> = DicGraph<FxHashMap<usize, Vertex>, E>;
     
     #[derive(Debug, Clone, Default)]
     pub struct Vertex {
@@ -291,19 +298,19 @@ pub mod graphs {
     }
     
     #[derive(Debug, Clone)]
-    pub struct VecGraph<E> {
-      vertices: Vec<Vertex>,
+    pub struct DicGraph<D, E = ()> {
+      vertices: D,
       edges: Vec<Edge<E>>,
     }
-    impl<E> VecGraph<E> {
-      pub fn new(n: usize) -> Self {
+    impl<D: Dic<usize, Vertex>, E> DicGraph<D, E> {
+      pub fn new() -> Self {
         Self {
-          vertices: vec![Vertex::default(); n],
+          vertices: D::new(),
           edges: Vec::new(),
         }
       }
     }
-    impl<E> Graph<E> for VecGraph<E> {
+    impl<D: Dic<usize, Vertex>, E> Graph<E> for DicGraph<D, E> {
       type Vertex = Vertex;
       type Edge = Edge<E>;
       
@@ -311,8 +318,8 @@ pub mod graphs {
       fn m(&self) -> usize { self.edges.len() }
       
       fn vertex(&self, id: usize) -> &Vertex {
-        assert!(id < self.n());
-        &self.vertices[id]
+        assert!(self.vertices.has(&id));
+        self.vertices.get(&id).as_ref().unwrap()
       }
 
       fn edge(&self, id: usize) -> &Edge<E> {
@@ -321,54 +328,48 @@ pub mod graphs {
       }
       
       fn edges_from(&self, from: usize) -> Vec<usize> {
-        assert!(from < self.n());
-        self.vertices[from].edges.clone()
+        self.vertex(from).edges.clone()
       }
       
       fn each_edge_from(&self, from: usize, mut f: impl FnMut(usize)) {
-        assert!(from < self.n());
-        for &e in &self.vertices[from].edges { (f)(e) }
+        for &e in &self.vertex(from).edges { (f)(e) }
       }
       
       fn adjacent_vertices(&self, from: usize) -> Vec<usize> {
-        assert!(from < self.n());
-        self.vertices[from].edges.iter().map(|&e| self.edges[e].to ).collect::<Vec<_>>()
+        self.vertex(from).edges.iter().map(|&e| self.edges[e].to ).collect::<Vec<_>>()
       }
       
       fn each_adjacent_vertex(&self, from: usize, mut f: impl FnMut(usize)) {
-        assert!(from < self.n());
-        for &e in &self.vertices[from].edges { (f)(self.edges[e].to) }
+        for &e in &self.vertex(from).edges { (f)(self.edges[e].to) }
       }
 
       fn reverse_edge(&self, e: usize) -> Option<usize> { self.edge(e).rev }
     }
-    impl<E> GraphMut<E> for VecGraph<E> {
+    impl<D: Dic<usize, Vertex>, E> GraphMut<E> for DicGraph<D, E> {
       fn add_vertex(&mut self) -> usize {
         let id = self.n();
-        self.vertices.push(Vertex { edges: Vec::new() });
+        self.vertices.insert(id, Vertex { edges: Vec::new() });
         id
       }
       fn add_arc(&mut self, from: usize, to: usize, weight: E) -> usize {
-        assert!(from < self.n() && to < self.n());
         let id = self.m();
         self.edges.push(Edge { from, to, weight, rev: None });
-        self.vertices[from].edges.push(id);
+        self.vertex_mut(from).edges.push(id);
         id
       }
 
       fn add_edge(&mut self, from: usize, to: usize, weight: E) -> (usize, usize) where E: Clone {
-        assert!(from < self.n() && to < self.n());
         let id = self.m();
         self.edges.push(Edge { from, to, weight: weight.clone(), rev: Some(id + 1) });
         self.edges.push(Edge { from: to, to: from, weight, rev: Some(id) });
-        self.vertices[from].edges.push(id);
-        self.vertices[to].edges.push(id + 1);
+        self.vertex_mut(from).edges.push(id);
+        self.vertex_mut(to).edges.push(id + 1);
         (id, id + 1)
       }
       
       fn vertex_mut(&mut self, id: usize) -> &mut Self::Vertex {
-        assert!(id < self.n());
-        &mut self.vertices[id]
+        if !self.vertices.has(&id) { self.vertices.insert(id, Vertex { edges: vec![] }) }
+        self.vertices.get_mut(&id).unwrap()
       }
       fn edge_mut(&mut self, id: usize) -> &mut Self::Edge {
         assert!(id < self.m());
@@ -376,13 +377,43 @@ pub mod graphs {
       }
       
       fn each_edge_mut_from(&mut self, from: usize, mut f: impl FnMut(&mut Self::Edge)) {
-        assert!(from < self.n());
-        for &e in &self.vertices[from].edges { (f)(&mut self.edges[e]) }
+        assert!(self.vertices.has(&from));
+        for &e in &self.edges_from(from) { (f)(&mut self.edges[e]) }
       }
       fn each_adjacent_vertex_mut(&mut self, from: usize, mut f: impl FnMut(&mut Self::Vertex)) {
-        assert!(from < self.n());
-        for v in self.adjacent_vertices(from) { (f)(&mut self.vertices[v]) }
+        assert!(self.vertices.has(&from));
+        for v in self.adjacent_vertices(from) { (f)(self.vertex_mut(v)) }
       }
+    }
+
+    pub trait Dic<K, V> {
+      fn new() -> Self;
+      fn insert(&mut self, key: K, value: V);
+      fn get(&self, key: &K) -> Option<&V>;
+      fn get_mut(&mut self, key: &K) -> Option<&mut V>;
+      fn len(&self) -> usize;
+      fn has(&self, key: &K) -> bool;
+    }
+
+    impl<K: Eq + std::hash::Hash, V, S: std::hash::BuildHasher + Default> Dic<K, V> for HashMap<K, V, S> {
+      fn new() -> Self { Self::default() }
+      fn insert(&mut self, key: K, value: V) { HashMap::insert(self, key, value); }
+      fn get(&self, key: &K) -> Option<&V> { HashMap::get(self, key) }
+      fn get_mut(&mut self, key: &K) -> Option<&mut V> { HashMap::get_mut(self, key) }
+      fn len(&self) -> usize { HashMap::len(self) }
+      fn has(&self, key: &K) -> bool { self.contains_key(key) }
+    }
+
+    impl<T: Default> Dic<usize, T> for Vec<T> {
+      fn new() -> Self { Vec::new() }
+      fn insert(&mut self, key: usize, value: T) {
+        if key >= self.len() { self.resize_with(self.len() * 2 + 1, T::default) };
+        self[key] = value;
+      }
+      fn get(&self, key: &usize) -> Option<&T> { Some(&self[*key]) }
+      fn get_mut(&mut self, key: &usize) -> Option<&mut T> { Some(&mut self[*key]) }
+      fn len(&self) -> usize { Vec::len(self) }
+      fn has(&self, key: &usize) -> bool { *key < self.len() }
     }
   }
 
@@ -545,14 +576,14 @@ pub mod graphs {
     impl<T: std::fmt::Debug + Copy + Ord + Default + Num + AssignOps + std::iter::Sum> Measure for T {}
     impl<T: Signed + Measure> MeasureSigned for T {}
     
-    fn zip<T, U>(left: Option<T>, right: Option<U>) -> Option<(T, U)> {
+    pub fn zip<T, U>(left: Option<T>, right: Option<U>) -> Option<(T, U)> {
       left.and_then(|x| right.map(|y| (x, y) ))
     }
   }
 
   struct Uniqueue<T> {
     queue: VecDeque<T>,
-    inq: IHashSet<T>,
+    inq: FxHashSet<T>,
   }
   impl<T: Clone + Eq + std::hash::Hash> Uniqueue<T> {
     fn new() -> Self {
@@ -574,8 +605,6 @@ pub mod graphs {
       }
     }
   }
-
-  type IHashSet<T> = HashSet<T, core::hash::BuildHasherDefault<FxHasher>>;
   
   use measure::*;
   use std::collections::*;
