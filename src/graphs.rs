@@ -1,16 +1,21 @@
 pub mod graphs {
-  // Last Update: 2021-06-17 20:20
+  // Last Update: 2021-06-17 22:50
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
-  pub use sub_graph::SubGraph;
+  // pub use sub_graph::SubGraph;
+
+  pub trait VertexId: Copy + Clone + Eq + std::hash::Hash {}
+  impl<V: Copy + Clone + Eq + std::hash::Hash> VertexId for V {}
   
-  pub trait Graph<E = ()> {
+  pub trait Graph<V: VertexId, E> {
     type Vertex: Vertex;
-    type Edge: Edge<E>;
+    type Edge: Edge<V, E>;
     
-    fn vertex(&self, id: usize) -> &Self::Vertex;
+    fn vertex(&self, id: V) -> &Self::Vertex;
     fn edge(&self, id: usize) -> &Self::Edge;
+
+    fn each_vertex(&self, f: impl FnMut(V));
     
     /// Number of vertices
     fn n(&self) -> usize;
@@ -18,18 +23,18 @@ pub mod graphs {
     /// Number of edges
     fn m(&self) -> usize;
     
-    fn edges_from(&self, from: usize) -> Vec<usize>;
-    fn adjacent_vertices(&self, from: usize) -> Vec<usize>;
+    fn edges_from(&self, from: V) -> Vec<usize>;
+    fn adjacent_vertices(&self, from: V) -> Vec<V>;
 
-    fn each_edge_from(&self, from: usize, mut f: impl FnMut(usize)) {
+    fn each_edge_from(&self, from: V, mut f: impl FnMut(usize)) {
       for e in self.edges_from(from) { (f)(e) }
     }
 
-    fn each_adjacent_vertex(&self, from: usize, mut f: impl FnMut(usize)) {
+    fn each_adjacent_vertex(&self, from: V, mut f: impl FnMut(V)) {
       for v in self.adjacent_vertices(from) { (f)(v) }
     }
 
-    fn find_edge(&self, from: usize, to: usize) -> Option<usize> {
+    fn find_edge(&self, from: V, to: V) -> Option<usize> {
       self.edges_from(from).into_iter().filter(|&e| self.edge(e).to() == to ).next()
     }
 
@@ -38,7 +43,7 @@ pub mod graphs {
       self.find_edge(edge.to(), edge.from())
     }
     
-    fn walk(&self, from: usize, mut f: impl FnMut(&mut Walker, usize)) {
+    fn walk(&self, from: V, mut f: impl FnMut(&mut Walker<V>, V)) {
       let mut walker = Walker::new();
       walker.go_next(from);
       while let Some(u) = walker.next() { (f)(&mut walker, u) }
@@ -47,11 +52,11 @@ pub mod graphs {
     /// do DFS in preorder
     /// edge is passed to `f`
     /// Note that `from` vertex is not passed to `f`
-    fn dfs(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
+    fn dfs(&self, from: V, mut f: impl FnMut(&Self::Edge)) {
       self.walk(from, |walker, u| self.each_edge_from(u, |e| if walker.go_next(self.edge(e).to()) { (f)(self.edge(e)) } ) );
     }
 
-    fn eulertour(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
+    fn eulertour(&self, from: V, mut f: impl FnMut(&Self::Edge)) {
       let mut visited = vec![false; self.m()];
       let mut stack = self.edges_from(from);
       for &e in &stack { visited[e] = true }
@@ -66,10 +71,10 @@ pub mod graphs {
       }
     }
     
-    fn connected_components(&self) -> Vec<Vec<usize>> {
+    fn connected_components(&self) -> Vec<Vec<V>> {
       let mut components = Vec::new();
       let mut walker = Walker::new();
-      for t in 0 .. self.n() {
+      self.each_vertex(|t| {
         if walker.go_next(t) {
           let mut component = vec![];
           while let Some(u) = walker.next() { 
@@ -78,31 +83,31 @@ pub mod graphs {
           }
           components.push(component);
         }
-      }
+      });
       components
     }
     
     /// do BFS
     /// edge is passed to `f`
     /// Note that `from` vertex is not passed to `f`
-    fn bfs(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
+    fn bfs(&self, from: V, mut f: impl FnMut(&Self::Edge)) {
       self.walk(from, |walker, u| self.each_edge_from(u, |e| if walker.go_later(self.edge(e).to()) { (f)(self.edge(e)) } ) );
     }
     
-    fn shortest_path_bfs<T: Measure>(&self, from: usize) -> Vec<Option<T>> {
-      let mut dist = vec![None; self.n()];
-      dist[from] = Some(T::zero());
-      self.bfs(from, |edge| dist[edge.to()] = dist[edge.from()].map(|d| d + T::one() ) );
+    fn shortest_path_bfs<T: Measure>(&self, from: V) -> FxHashMap<V, Option<T>> {
+      let mut dist = FxHashMap::default();
+      dist.insert(from, Some(T::zero()));
+      self.bfs(from, |edge| { dist.insert(edge.to(), dist.get(&edge.from()).and_then(|pd| pd.map(|d| d + T::one() ))); });
       dist
     }
 
-    fn shortest_path_bfs_by<C: Measure>(&self, from: usize, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
-      let mut dist = vec![None; self.n()];
-      dist[from] = Some(C::zero());
+    fn shortest_path_bfs_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, Option<C>> {
+      let mut dist = FxHashMap::default();
+      dist.insert(from, Some(C::zero()));
       self.walk(from, |walker, u| self.each_edge_from(u, |e| {
-        if let Some(d) = (f)(self.edge(e), dist[u].unwrap()) {
+        if let Some(d) = (f)(self.edge(e), dist.get(&u).unwrap().unwrap()) {
           if walker.go_later(self.edge(e).to()) {
-            dist[self.edge(e).to()] = Some(d);
+            dist.insert(self.edge(e).to(), Some(d));
           }
         }
       }));
@@ -110,155 +115,145 @@ pub mod graphs {
     }
 
     /// `f(e, d)? >= d`
-    fn shortest_path_dijkstra_by<C: Measure>(&self, from: usize, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
-      let mut dist = vec![None; self.n()];
+    fn shortest_path_dijkstra_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, Option<C>> {
+      let mut dist = FxHashMap::default();
+      dist.insert(from, Some(C::zero()));
       let mut pq = BinaryHeap::new();
-      dist[from] = Some(C::zero());
-      pq.push((Reverse(C::zero()), from));
-      while let Some((Reverse(d1), u)) = pq.pop() {
-        if dist[u] != Some(d1) { continue }
+      pq.push(DistV(C::zero(), from));
+      while let Some(DistV(d1, u)) = pq.pop() {
+        if dist.get(&u).unwrap().unwrap() != d1 { continue }
         self.each_edge_from(u, |e| if let Some(d) = (f)(self.edge(e), d1) {
-          dist[self.edge(e).to()].if_chmin(d, || pq.push((Reverse(d), self.edge(e).to())) );
+          dist.entry(self.edge(e).to()).or_insert(None).if_chmin(d, || pq.push(DistV(d, self.edge(e).to())) );
         } );
       }
       dist
     }
 
-    fn shortest_path_dijkstra(&self, from: usize) -> Vec<Option<E>> where E: Measure {
+    fn shortest_path_dijkstra(&self, from: V) -> FxHashMap<V, Option<E>> where E: Measure {
       self.shortest_path_dijkstra_by(from, |edge, d| Some(d + *edge.weight()) )
     }
 
-    fn shortest_path_spfa_by<C: Measure>(&self, from: usize, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
-      let mut dist = vec![None; self.n()];
-      dist[from] = Some(C::zero());
+    fn shortest_path_spfa_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, Option<C>> {
+      let mut dist = FxHashMap::default();
+      dist.insert(from, Some(C::zero()));
       let mut q = Uniqueue::new();
       q.push_front(from);
       while let Some(u) = q.pop_back() {
         self.each_edge_from(u, |e| {
           let v = self.edge(e).to();
-          if let Some(d) = (f)(self.edge(e), dist[u].unwrap()) {
-            dist[v].if_chmin(d, || q.push_front(v) );
+          if let Some(d) = (f)(self.edge(e), dist[&u].unwrap()) {
+            dist.get_mut(&v).unwrap().if_chmin(d, || q.push_front(v) );
           }
         });
       }
       dist
     }
 
-    fn shortest_path_spfa(&self, from: usize) -> Vec<Option<E>> where E: Measure {
+    fn shortest_path_spfa(&self, from: V) -> FxHashMap<V, Option<E>> where E: Measure {
       self.shortest_path_spfa_by(from, |edge, d| Some(d + *edge.weight()) )
     }
 
-    fn shortest_paths_floyd_warshall_by<C: Measure>(&self, loops: bool, mut f: impl FnMut(&Self::Edge) -> Option<C>) -> Vec<Vec<Option<C>>> {
-      let mut dist = vec![vec![None; self.n()]; self.n()];
+    fn shortest_paths_floyd_warshall_by<C: Measure>(&self, loops: bool, mut f: impl FnMut(&Self::Edge) -> Option<C>) -> FxHashMap<V, FxHashMap<V, Option<C>>> {
+      let mut dist = FxHashMap::default();
       for e in 0 .. self.m() {
         let edge = self.edge(e);
-        dist[edge.from()][edge.to()] = (f)(edge);
+        dist.entry(edge.from()).or_insert_with(FxHashMap::default).insert(edge.to(), (f)(edge));
       }
       if loops {
-        for i in 0 .. self.n() {
-          dist[i][i] = Some(C::zero());
-        }
+        self.each_vertex(|v| {
+          dist.entry(v).or_insert_with(FxHashMap::default).insert(v, Some(C::zero()));
+        });
       }
-      for k in 0 .. self.n() {
-        for i in 0 .. self.n() {
-          for j in 0 .. self.n() {
-            if let Some((d1, d2)) = self::measure::zip(dist[i][k], dist[k][j]) {
-              dist[i][j].chmin(d1 + d2);
+      self.each_vertex(|k| {
+        self.each_vertex(|i| {
+          self.each_vertex(|j| {
+            if let Some((d1, d2)) = self::measure::zip(dist.get(&i).and_then(|d| d.get(&k).and_then(|&x| x ) ), dist.get(&k).and_then(|d| d.get(&j).and_then(|&x| x ) )) {
+              dist.entry(i).or_insert_with(FxHashMap::default).entry(j).or_insert(None).chmin(d1 + d2);
             }
-          }
-        }
-      }
+          });
+        });
+      });
       dist
     }
 
-    fn shortest_paths_floyd_warshall(&self) -> Vec<Vec<Option<E>>> where E: Measure {
+    fn shortest_paths_floyd_warshall(&self) -> FxHashMap<V, FxHashMap<V, Option<E>>> where E: Measure {
       self.shortest_paths_floyd_warshall_by(true, |edge| Some(*edge.weight()) )
     }
 
-    fn minimum_spanning_tree_prim_by<C: Measure, F: FnMut(&Self::Edge) -> Option<C>>(&self, root: usize, mut f: F) -> (C, SubGraph<'_, E, Self>) {
-      let mut cost = C::zero();
-      let mut included = vec![false; self.n()];
-      let mut vertices = vec![root];
-      let mut edges = Vec::new();
-      let mut pq = self.edges_from(root).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ).collect::<BinaryHeap<_>>();
-      included[root] = true;
-      while let Some((Reverse(c), e)) = pq.pop() {
-        let to = self.edge(e).to();
-        if included[to] { continue }
-        included[to] = true;
-        vertices.push(to);
-        edges.push(e);
-        cost += c;
-        for x in self.edges_from(to).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ) {
-          pq.push(x);
-        }
-      }
-      (cost, SubGraph::new(self, vertices, edges))
-    }
+    // fn minimum_spanning_tree_prim_by<C: Measure, F: FnMut(&Self::Edge) -> Option<C>>(&self, root: usize, mut f: F) -> (C, SubGraph<'_, V, E, Self>) {
+    //   let mut cost = C::zero();
+    //   let mut included = vec![false; self.n()];
+    //   let mut vertices = vec![root];
+    //   let mut edges = Vec::new();
+    //   let mut pq = self.edges_from(root).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ).collect::<BinaryHeap<_>>();
+    //   included[root] = true;
+    //   while let Some((Reverse(c), e)) = pq.pop() {
+    //     let to = self.edge(e).to();
+    //     if included[to] { continue }
+    //     included[to] = true;
+    //     vertices.push(to);
+    //     edges.push(e);
+    //     cost += c;
+    //     for x in self.edges_from(to).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ) {
+    //       pq.push(x);
+    //     }
+    //   }
+    //   (cost, SubGraph::new(self, vertices, edges))
+    // }
 
-    fn minimum_spanning_tree_prim(&self, root: usize) -> (E, SubGraph<'_, E, Self>) where E: Measure {
-      self.minimum_spanning_tree_prim_by(root, |edge| Some(*edge.weight()) )
-    }
+    // fn minimum_spanning_tree_prim(&self, root: usize) -> (E, SubGraph<'_, V, E, Self>) where E: Measure {
+    //   self.minimum_spanning_tree_prim_by(root, |edge| Some(*edge.weight()) )
+    // }
   }
   
-  pub trait GraphMut<E = ()>: Graph<E> where Self::Vertex: VertexMut, Self::Edge: EdgeMut<E> {
-    fn add_vertex(&mut self) -> usize;
-    fn add_vertices(&mut self, n: usize) -> Vec<usize> {
-      (0 .. n).map(|_| self.add_vertex() ).collect::<Vec<_>>()
-    }
-    fn add_arc(&mut self, from: usize, to: usize, weight: E) -> usize;
-    fn connect(&mut self, from: usize, to: usize) -> usize where E: Default {
-      self.add_arc(from, to, Default::default())
-    }
-    fn add_edge(&mut self, u: usize, v: usize, weight: E) -> (usize, usize) where E: Clone {
-      (self.add_arc(u, v, weight.clone()), self.add_arc(v, u, weight))
-    }
-    fn connect2(&mut self, u: usize, v: usize) -> (usize, usize) where E: Default {
-      (self.connect(u, v), self.connect(v, u))
-    }
+  pub trait GraphMut<V: VertexId, E>: Graph<V, E> where Self::Vertex: VertexMut, Self::Edge: EdgeMut<V, E> {
+    fn add_arc(&mut self, from: V, to: V, weight: E) -> usize;
+    fn connect(&mut self, from: V, to: V) -> usize where E: Default { self.add_arc(from, to, Default::default()) }
+    fn add_edge(&mut self, u: V, v: V, weight: E) -> (usize, usize) where E: Clone { (self.add_arc(u, v, weight.clone()), self.add_arc(v, u, weight)) }
+    fn connect2(&mut self, u: V, v: V) -> (usize, usize) where E: Default { (self.connect(u, v), self.connect(v, u)) }
 
-    fn add_arcs<I: IntoIterator>(&mut self, edges: I) -> Vec<usize> where I::Item: IntoEdge<E> {
+    fn add_arcs<I: IntoIterator>(&mut self, edges: I) -> Vec<usize> where I::Item: IntoEdge<V, E> {
       edges.into_iter().map(|edge| {
         let (from, to, weight) = edge.into_edge();
         self.add_arc(from, to, weight)
       }).collect::<Vec<_>>()
     }
-    fn add_edges<I: IntoIterator>(&mut self, edges: I) -> Vec<(usize, usize)> where E: Clone, I::Item: IntoEdge<E> {
+    fn add_edges<I: IntoIterator>(&mut self, edges: I) -> Vec<(usize, usize)> where E: Clone, I::Item: IntoEdge<V, E> {
       edges.into_iter().map(|edge| {
         let (from, to, weight) = edge.into_edge();
         self.add_edge(from, to, weight)
       }).collect::<Vec<_>>()
     }
     
-    fn vertex_mut(&mut self, id: usize) -> &mut Self::Vertex;
+    fn vertex_mut(&mut self, id: V) -> &mut Self::Vertex;
     fn edge_mut(&mut self, id: usize) -> &mut Self::Edge;
     
-    fn each_edge_mut_from(&mut self, from: usize, f: impl FnMut(&mut Self::Edge));
-    fn each_adjacent_vertex_mut(&mut self, from: usize, f: impl FnMut(&mut Self::Vertex));
+    fn each_edge_mut_from(&mut self, from: V, f: impl FnMut(&mut Self::Edge));
+    fn each_adjacent_vertex_mut(&mut self, from: V, f: impl FnMut(&mut Self::Vertex));
   }
   
   pub trait Vertex {}
   
-  pub trait Edge<E = ()> {
-    fn from(&self) -> usize;
-    fn to(&self) -> usize;
+  pub trait Edge<V, E> {
+    fn from(&self) -> V;
+    fn to(&self) -> V;
     fn weight(&self) -> &E;
   }
 
   pub trait VertexMut: Vertex {}
 
-  pub trait EdgeMut<E = ()>: Edge<E> {
+  pub trait EdgeMut<V, E>: Edge<V, E> {
     fn weight_mut(&mut self) -> &mut E;
   }
 
-  pub trait IntoEdge<E = ()> {
-    fn into_edge(self) -> (usize, usize, E);
+  pub trait IntoEdge<V, E> {
+    fn into_edge(self) -> (V, V, E);
   }
   
   #[derive(Debug)]
-  pub struct Walker {
-    visited: FxHashSet<usize>,
-    queue: VecDeque<usize>,
+  pub struct Walker<V: VertexId> {
+    visited: FxHashSet<V>,
+    queue: VecDeque<V>,
   }
   
   pub mod dic_graph {
@@ -266,7 +261,7 @@ pub mod graphs {
     use std::collections::*;
     use rustc_hash::*;
 
-    use super::{Graph, GraphMut, measure::Measure};
+    use super::{Graph, GraphMut, measure::Measure, Dic, VertexId};
 
     pub type VecGraph<E = ()> = DicGraph<Vec<Vertex>, E>;
     pub type HashGraph<E = ()> = DicGraph<FxHashMap<usize, Vertex>, E>;
@@ -282,25 +277,25 @@ pub mod graphs {
     impl super::VertexMut for Vertex {}
     
     #[derive(Debug, Clone)]
-    pub struct Edge<E> {
-      from: usize,
-      to: usize,
+    pub struct Edge<V, E> {
+      from: V,
+      to: V,
       weight: E,
       rev: Option<usize>,
     }
-    impl<E> super::Edge<E> for Edge<E> {
-      fn from(&self) -> usize { self.from }
-      fn to(&self) -> usize { self.to }
+    impl<V: VertexId, E> super::Edge<V, E> for Edge<V, E> {
+      fn from(&self) -> V { self.from }
+      fn to(&self) -> V { self.to }
       fn weight(&self) -> &E { &self.weight }
     }
-    impl<E> super::EdgeMut<E> for Edge<E> {
+    impl<V: VertexId, E> super::EdgeMut<V, E> for Edge<V, E> {
       fn weight_mut(&mut self) -> &mut E { &mut self.weight }
     }
     
     #[derive(Debug, Clone)]
     pub struct DicGraph<D, E = ()> {
       vertices: D,
-      edges: Vec<Edge<E>>,
+      edges: Vec<Edge<usize, E>>,
     }
     impl<D: Dic<usize, Vertex>, E> DicGraph<D, E> {
       pub fn new() -> Self {
@@ -310,19 +305,21 @@ pub mod graphs {
         }
       }
     }
-    impl<D: Dic<usize, Vertex>, E> Graph<E> for DicGraph<D, E> {
+    impl<D: Dic<usize, Vertex>, E> Graph<usize, E> for DicGraph<D, E> {
       type Vertex = Vertex;
-      type Edge = Edge<E>;
+      type Edge = Edge<usize, E>;
       
       fn n(&self) -> usize { self.vertices.len() }
       fn m(&self) -> usize { self.edges.len() }
+
+      fn each_vertex(&self, mut f: impl FnMut(usize)) { self.vertices.each_key(|&v| (f)(v) ) }
       
       fn vertex(&self, id: usize) -> &Vertex {
         assert!(self.vertices.has(&id));
         self.vertices.get(&id).as_ref().unwrap()
       }
 
-      fn edge(&self, id: usize) -> &Edge<E> {
+      fn edge(&self, id: usize) -> &Self::Edge {
         assert!(id < self.m());
         &self.edges[id]
       }
@@ -345,12 +342,7 @@ pub mod graphs {
 
       fn reverse_edge(&self, e: usize) -> Option<usize> { self.edge(e).rev }
     }
-    impl<D: Dic<usize, Vertex>, E> GraphMut<E> for DicGraph<D, E> {
-      fn add_vertex(&mut self) -> usize {
-        let id = self.n();
-        self.vertices.insert(id, Vertex { edges: Vec::new() });
-        id
-      }
+    impl<D: Dic<usize, Vertex>, E> GraphMut<usize, E> for DicGraph<D, E> {
       fn add_arc(&mut self, from: usize, to: usize, weight: E) -> usize {
         let id = self.m();
         self.edges.push(Edge { from, to, weight, rev: None });
@@ -385,84 +377,54 @@ pub mod graphs {
         for v in self.adjacent_vertices(from) { (f)(self.vertex_mut(v)) }
       }
     }
-
-    pub trait Dic<K, V> {
-      fn new() -> Self;
-      fn insert(&mut self, key: K, value: V);
-      fn get(&self, key: &K) -> Option<&V>;
-      fn get_mut(&mut self, key: &K) -> Option<&mut V>;
-      fn len(&self) -> usize;
-      fn has(&self, key: &K) -> bool;
-    }
-
-    impl<K: Eq + std::hash::Hash, V, S: std::hash::BuildHasher + Default> Dic<K, V> for HashMap<K, V, S> {
-      fn new() -> Self { Self::default() }
-      fn insert(&mut self, key: K, value: V) { HashMap::insert(self, key, value); }
-      fn get(&self, key: &K) -> Option<&V> { HashMap::get(self, key) }
-      fn get_mut(&mut self, key: &K) -> Option<&mut V> { HashMap::get_mut(self, key) }
-      fn len(&self) -> usize { HashMap::len(self) }
-      fn has(&self, key: &K) -> bool { self.contains_key(key) }
-    }
-
-    impl<T: Default> Dic<usize, T> for Vec<T> {
-      fn new() -> Self { Vec::new() }
-      fn insert(&mut self, key: usize, value: T) {
-        if key >= self.len() { self.resize_with(self.len() * 2 + 1, T::default) };
-        self[key] = value;
-      }
-      fn get(&self, key: &usize) -> Option<&T> { Some(&self[*key]) }
-      fn get_mut(&mut self, key: &usize) -> Option<&mut T> { Some(&mut self[*key]) }
-      fn len(&self) -> usize { Vec::len(self) }
-      fn has(&self, key: &usize) -> bool { *key < self.len() }
-    }
   }
 
-  pub mod sub_graph {
-    use super::*;
-    use std::marker::PhantomData;
+  // pub mod sub_graph {
+  //   use super::*;
+  //   use std::marker::PhantomData;
 
-    #[derive(Debug)]
-    pub struct SubGraph<'a, E, G: Graph<E> + ?Sized> {
-      origin: &'a G,
-      vertices: Vec<usize>,
-      edges: Vec<usize>,
-      phantom: PhantomData<E>,
-    }
-    impl<'a, E, G: Graph<E> + ?Sized> SubGraph<'a, E, G> {
-      pub fn new(origin: &'a G, vertices: Vec<usize>, edges: Vec<usize>) -> Self {
-        Self { origin, vertices, edges, phantom: PhantomData }
-      }
-    }
-    impl<E, G: Graph<E> + ?Sized> Graph<E> for SubGraph<'_, E, G> {
-      type Vertex = G::Vertex;
-      type Edge = G::Edge;
+  //   #[derive(Debug)]
+  //   pub struct SubGraph<'a, V: VertexId, E, G: Graph<V, E> + ?Sized> {
+  //     origin: &'a G,
+  //     vertices: Vec<usize>,
+  //     edges: Vec<usize>,
+  //     phantom: PhantomData<(V, E)>,
+  //   }
+  //   impl<'a, V: VertexId, E, G: Graph<V, E> + ?Sized> SubGraph<'a, V, E, G> {
+  //     pub fn new(origin: &'a G, vertices: Vec<usize>, edges: Vec<usize>) -> Self {
+  //       Self { origin, vertices, edges, phantom: PhantomData }
+  //     }
+  //   }
+  //   impl<V: VertexId, E, G: Graph<V, E> + ?Sized> Graph<usize, E> for SubGraph<'_, V, E, G> {
+  //     type Vertex = G::Vertex;
+  //     type Edge = G::Edge;
 
-      fn n(&self) -> usize { self.vertices.len() }
-      fn m(&self) -> usize { self.edges.len() }
+  //     fn n(&self) -> usize { self.vertices.len() }
+  //     fn m(&self) -> usize { self.edges.len() }
 
-      fn vertex(&self, id: usize) -> &Self::Vertex {
-        assert!(id < self.n());
-        self.origin.vertex(self.vertices[id])
-      }
+  //     fn vertex(&self, id: usize) -> &Self::Vertex {
+  //       assert!(id < self.n());
+  //       self.origin.vertex(self.vertices[id])
+  //     }
 
-      fn edge(&self, id: usize) -> &Self::Edge {
-        assert!(id < self.m());
-        self.origin.edge(self.edges[id])
-      }
+  //     fn edge(&self, id: usize) -> &Self::Edge {
+  //       assert!(id < self.m());
+  //       self.origin.edge(self.edges[id])
+  //     }
 
-      fn edges_from(&self, from: usize) -> Vec<usize> {
-        assert!(from < self.n());
-        self.origin.edges_from(self.vertices[from]).into_iter().filter_map(|e| self.edges.binary_search(&e).ok() ).collect::<Vec<_>>()
-      }
+  //     fn edges_from(&self, from: usize) -> Vec<usize> {
+  //       assert!(from < self.n());
+  //       self.origin.edges_from(self.vertices[from]).into_iter().filter_map(|e| self.edges.binary_search(&e).ok() ).collect::<Vec<_>>()
+  //     }
 
-      fn adjacent_vertices(&self, from: usize) -> Vec<usize> {
-        assert!(from < self.n());
-        self.origin.adjacent_vertices(self.vertices[from]).into_iter().filter_map(|v| self.vertices.binary_search(&v).ok() ).collect::<Vec<_>>()
-      }
-    }
-  }
+  //     fn adjacent_vertices(&self, from: usize) -> Vec<usize> {
+  //       assert!(from < self.n());
+  //       self.origin.adjacent_vertices(self.vertices[from]).into_iter().filter_map(|v| self.vertices.binary_search(&v).ok() ).collect::<Vec<_>>()
+  //     }
+  //   }
+  // }
   
-  impl Walker {
+  impl<V: VertexId> Walker<V> {
     fn new() -> Self {
       Self {
         visited: FxHashSet::default(),
@@ -470,7 +432,7 @@ pub mod graphs {
       }
     }
     
-    fn go_next(&mut self, v: usize) -> bool {
+    fn go_next(&mut self, v: V) -> bool {
       if self.visited.insert(v) {
         self.queue.push_back(v);
         return true;
@@ -478,7 +440,7 @@ pub mod graphs {
       false
     }
     
-    fn go_later(&mut self, v: usize) -> bool {
+    fn go_later(&mut self, v: V) -> bool {
       if self.visited.insert(v) {
         self.queue.push_front(v);
         return true;
@@ -486,20 +448,20 @@ pub mod graphs {
       false
     }
     
-    fn forget(&mut self, v: usize) -> bool { self.visited.remove(&v) }
+    fn forget(&mut self, v: V) -> bool { self.visited.remove(&v) }
 
-    fn is_visited(&self, v: usize) -> bool { self.visited.contains(&v) }
+    fn is_visited(&self, v: V) -> bool { self.visited.contains(&v) }
   }
-  impl Iterator for Walker {
-    type Item = usize;
+  impl<V: VertexId> Iterator for Walker<V> {
+    type Item = V;
     fn next(&mut self) -> Option<Self::Item> { self.queue.pop_back() }
   }
 
-  impl<E> IntoEdge<E> for (usize, usize, E) {
-    fn into_edge(self) -> (usize, usize, E) { self }
+  impl<V, E> IntoEdge<V, E> for (V, V, E) {
+    fn into_edge(self) -> (V, V, E) { self }
   }
-  impl<E: Default> IntoEdge<E> for (usize, usize) {
-    fn into_edge(self) -> (usize, usize, E) { (self.0, self.1, Default::default()) }
+  impl<V, E: Default> IntoEdge<V, E> for (V, V) {
+    fn into_edge(self) -> (V, V, E) { (self.0, self.1, Default::default()) }
   }
   
   pub mod measure {
@@ -604,6 +566,52 @@ pub mod graphs {
         None
       }
     }
+  }
+
+  #[derive(Copy, Clone)]
+  pub struct DistV<C: Ord + Eq, V: PartialEq>(C, V);
+  impl<C: Ord + Eq, V: PartialEq> Ord for DistV<C, V> {
+    fn cmp(&self, other: &Self) -> Ordering { other.0.cmp(&self.0) }
+  }
+  impl<C: Ord + Eq, V: PartialEq> PartialOrd for DistV<C, V> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> { other.0.partial_cmp(&self.0) }
+  }
+  impl<C: Ord + Eq, V: PartialEq> PartialEq for DistV<C, V> {
+    fn eq(&self, other: &Self) -> bool { self.0.eq(&other.0) && self.1.eq(&other.1) }
+  }
+  impl<C: Ord + Eq, V: PartialEq> Eq for DistV<C, V> {}
+
+  pub trait Dic<K, V> {
+    fn new() -> Self;
+    fn insert(&mut self, key: K, value: V);
+    fn get(&self, key: &K) -> Option<&V>;
+    fn get_mut(&mut self, key: &K) -> Option<&mut V>;
+    fn len(&self) -> usize;
+    fn has(&self, key: &K) -> bool;
+    fn each_key(&self, f: impl FnMut(&K));
+  }
+
+  impl<K: Clone + Eq + std::hash::Hash, V, S: std::hash::BuildHasher + Default> Dic<K, V> for HashMap<K, V, S> {
+    fn new() -> Self { Self::default() }
+    fn insert(&mut self, key: K, value: V) { HashMap::insert(self, key, value); }
+    fn get(&self, key: &K) -> Option<&V> { HashMap::get(self, key) }
+    fn get_mut(&mut self, key: &K) -> Option<&mut V> { HashMap::get_mut(self, key) }
+    fn len(&self) -> usize { HashMap::len(self) }
+    fn has(&self, key: &K) -> bool { self.contains_key(key) }
+    fn each_key(&self, mut f: impl FnMut(&K)) { for k in self.keys() { (f)(k) } }
+  }
+
+  impl<T: Default> Dic<usize, T> for Vec<T> {
+    fn new() -> Self { Vec::new() }
+    fn insert(&mut self, key: usize, value: T) {
+      if key >= self.len() { self.resize_with(self.len() * 2 + 1, T::default) };
+      self[key] = value;
+    }
+    fn get(&self, key: &usize) -> Option<&T> { Some(&self[*key]) }
+    fn get_mut(&mut self, key: &usize) -> Option<&mut T> { Some(&mut self[*key]) }
+    fn len(&self) -> usize { Vec::len(self) }
+    fn has(&self, key: &usize) -> bool { *key < self.len() }
+    fn each_key(&self, mut f: impl FnMut(&usize)) { for i in 0 .. self.len() { (f)(&i) } }
   }
   
   use measure::*;
