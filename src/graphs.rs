@@ -1,5 +1,5 @@
 pub mod graphs {
-  // Last Update: 2021-06-18 13:20
+  // Last Update: 2021-06-18 13:30
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
@@ -330,14 +330,17 @@ pub mod graphs {
       }
       
       fn each_edge_from(&self, from: V, mut f: impl FnMut(usize)) {
+        if !self.vertices.has(&from) { return };
         for &e in &self.vertex(from).edges { (f)(e) }
       }
       
       fn adjacent_vertices(&self, from: V) -> Vec<V> {
+        if !self.vertices.has(&from) { return Vec::new() };
         self.vertex(from).edges.iter().map(|&e| self.edges[e].to ).collect::<Vec<_>>()
       }
       
       fn each_adjacent_vertex(&self, from: V, mut f: impl FnMut(V)) {
+        if !self.vertices.has(&from) { return };
         for &e in &self.vertex(from).edges { (f)(self.edges[e].to) }
       }
 
