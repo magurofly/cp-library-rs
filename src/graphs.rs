@@ -1,5 +1,5 @@
 pub mod graphs {
-  // Last Update: 2021-06-18 01:30
+  // Last Update: 2021-06-18 11:30
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
@@ -116,60 +116,60 @@ pub mod graphs {
 
     /// `f(e, d)? >= d`
     ///FIXME: なんかこわれてるので直す
-    fn shortest_path_dijkstra_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, Option<C>> {
+    fn shortest_path_dijkstra_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, C> {
       let mut dist = FxHashMap::default();
-      dist.insert(from, Some(C::zero()));
+      dist.insert(from, C::zero());
       let mut pq = BinaryHeap::new();
       pq.push(DistV(C::zero(), from));
       while let Some(DistV(d1, u)) = pq.pop() {
-        if dist.get(&u).unwrap().unwrap() != d1 { continue }
+        if dist[&u] != d1 { continue }
         self.each_edge_from(u, |e| if let Some(d) = (f)(self.edge(e), d1) {
-          dist.entry(self.edge(e).to()).or_insert(None).if_chmin(d, || pq.push(DistV(d, self.edge(e).to())) );
+          dist.if_chmin(self.edge(e).to(), d, || pq.push(DistV(d, self.edge(e).to())) );
         } );
       }
       dist
     }
 
-    fn shortest_path_dijkstra(&self, from: V) -> FxHashMap<V, Option<E>> where E: Measure {
+    fn shortest_path_dijkstra(&self, from: V) -> FxHashMap<V, E> where E: Measure {
       self.shortest_path_dijkstra_by(from, |edge, d| Some(d + *edge.weight()) )
     }
 
-    fn shortest_path_spfa_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, Option<C>> {
+    fn shortest_path_spfa_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, C> {
       let mut dist = FxHashMap::default();
-      dist.insert(from, Some(C::zero()));
+      dist.insert(from, C::zero());
       let mut q = Uniqueue::new();
       q.push_front(from);
       while let Some(u) = q.pop_back() {
         self.each_edge_from(u, |e| {
           let v = self.edge(e).to();
-          if let Some(d) = (f)(self.edge(e), dist[&u].unwrap()) {
-            dist.get_mut(&v).unwrap().if_chmin(d, || q.push_front(v) );
+          if let Some(d) = (f)(self.edge(e), dist[&u]) {
+            dist.if_chmin(v, d, || q.push_front(v) );
           }
         });
       }
       dist
     }
 
-    fn shortest_path_spfa(&self, from: V) -> FxHashMap<V, Option<E>> where E: Measure {
+    fn shortest_path_spfa(&self, from: V) -> FxHashMap<V, E> where E: Measure {
       self.shortest_path_spfa_by(from, |edge, d| Some(d + *edge.weight()) )
     }
 
-    fn shortest_paths_floyd_warshall_by<C: Measure>(&self, loops: bool, mut f: impl FnMut(&Self::Edge) -> Option<C>) -> FxHashMap<V, FxHashMap<V, Option<C>>> {
+    fn shortest_paths_floyd_warshall_by<C: Measure>(&self, loops: bool, mut f: impl FnMut(&Self::Edge) -> Option<C>) -> FxHashMap<V, FxHashMap<V, C>> {
       let mut dist = FxHashMap::default();
       for e in 0 .. self.m() {
         let edge = self.edge(e);
-        dist.entry(edge.from()).or_insert_with(FxHashMap::default).insert(edge.to(), (f)(edge));
+        if let Some(d) = (f)(edge) { dist.entry(edge.from()).or_insert_with(FxHashMap::default).insert(edge.to(), d); }
       }
       if loops {
         self.each_vertex(|v| {
-          dist.entry(v).or_insert_with(FxHashMap::default).insert(v, Some(C::zero()));
+          dist.entry(v).or_insert_with(FxHashMap::default).insert(v, C::zero());
         });
       }
       self.each_vertex(|k| {
         self.each_vertex(|i| {
           self.each_vertex(|j| {
-            if let Some((d1, d2)) = self::measure::zip(dist.get(&i).and_then(|d| d.get(&k).and_then(|&x| x ) ), dist.get(&k).and_then(|d| d.get(&j).and_then(|&x| x ) )) {
-              dist.entry(i).or_insert_with(FxHashMap::default).entry(j).or_insert(None).chmin(d1 + d2);
+            if let Some((&d1, &d2)) = self::measure::zip(dist.get(&i).and_then(|d| d.get(&k) ), dist.get(&k).and_then(|d| d.get(&j) )) {
+              dist.entry(i).or_insert_with(FxHashMap::default).chmin(j, d1 + d2);
             }
           });
         });
@@ -177,7 +177,7 @@ pub mod graphs {
       dist
     }
 
-    fn shortest_paths_floyd_warshall(&self) -> FxHashMap<V, FxHashMap<V, Option<E>>> where E: Measure {
+    fn shortest_paths_floyd_warshall(&self) -> FxHashMap<V, FxHashMap<V, E>> where E: Measure {
       self.shortest_paths_floyd_warshall_by(true, |edge| Some(*edge.weight()) )
     }
 
@@ -264,7 +264,7 @@ pub mod graphs {
 
     use super::{Graph, GraphMut, measure::Measure, Dic, VertexId};
 
-    pub type VecGraph<E = ()> = DicGraph<Vec<Vertex>, usize, E>;
+    pub type VecGraph<E = ()> = DicGraph<Vec<Option<Vertex>>, usize, E>;
     pub type HashGraph<V, E = ()> = DicGraph<FxHashMap<usize, Vertex>, V, E>;
     
     #[derive(Debug, Clone, Default)]
@@ -617,6 +617,10 @@ pub mod graphs {
     fn len(&self) -> usize;
     fn has(&self, key: &K) -> bool;
     fn each_key(&self, f: impl FnMut(&K));
+    fn chmin(&mut self, key: K, x: V) -> &mut V where K: Clone, V: Measure { if self.has(&key) { self.get_mut(&key).unwrap().chmin(x) } else { self.insert(key.clone(), x); self.get_mut(&key).unwrap() } }
+    fn chmax(&mut self, key: K, x: V) -> &mut V where K: Clone, V: Measure { if self.has(&key) { self.get_mut(&key).unwrap().chmax(x) } else { self.insert(key.clone(), x); self.get_mut(&key).unwrap() } }
+    fn if_chmin(&mut self, key: K, x: V, f: impl FnOnce()) where V: Measure { if let Some(y) = self.get_mut(&key) { y.if_chmin(x, f); return }; self.insert(key, x); (f)() }
+    fn if_chmax(&mut self, key: K, x: V, f: impl FnOnce()) where V: Measure { if let Some(y) = self.get_mut(&key) { y.if_chmax(x, f); return }; self.insert(key, x); (f)() }
   }
 
   impl<K: Clone + Eq + std::hash::Hash, V, S: std::hash::BuildHasher + Default> Dic<K, V> for HashMap<K, V, S> {
@@ -629,16 +633,16 @@ pub mod graphs {
     fn each_key(&self, mut f: impl FnMut(&K)) { for k in self.keys() { (f)(k) } }
   }
 
-  impl<T: Default> Dic<usize, T> for Vec<T> {
+  impl<T: Default> Dic<usize, T> for Vec<Option<T>> {
     fn new() -> Self { Vec::new() }
     fn insert(&mut self, key: usize, value: T) {
-      if key >= self.len() { self.resize_with(self.len() * 2 + 1, T::default) };
-      self[key] = value;
+      if key >= self.len() { self.resize_with(key + 1, || None) };
+      self[key] = Some(value);
     }
-    fn get(&self, key: &usize) -> Option<&T> { Some(&self[*key]) }
-    fn get_mut(&mut self, key: &usize) -> Option<&mut T> { Some(&mut self[*key]) }
+    fn get(&self, key: &usize) -> Option<&T> { if *key < self.len() { self[*key].as_ref() } else { None } }
+    fn get_mut(&mut self, key: &usize) -> Option<&mut T> { if *key < self.len() { self[*key].as_mut() } else { None } }
     fn len(&self) -> usize { Vec::len(self) }
-    fn has(&self, key: &usize) -> bool { *key < self.len() }
+    fn has(&self, key: &usize) -> bool { *key < self.len() && self.get(key).is_some() }
     fn each_key(&self, mut f: impl FnMut(&usize)) { for i in 0 .. self.len() { (f)(&i) } }
   }
   
