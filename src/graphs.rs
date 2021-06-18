@@ -1,5 +1,5 @@
 pub mod graphs {
-  // Last Update: 2021-06-18 13:00
+  // Last Update: 2021-06-18 13:20
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
@@ -265,7 +265,7 @@ pub mod graphs {
     use super::{Graph, GraphMut, measure::Measure, Dic, VertexId};
 
     pub type VecGraph<E = ()> = DicGraph<Vec<Option<Vertex>>, usize, E>;
-    pub type HashGraph<V, E = ()> = DicGraph<FxHashMap<usize, Vertex>, V, E>;
+    pub type HashGraph<V, E = ()> = DicGraph<FxHashMap<V, Vertex>, V, E>;
     
     #[derive(Debug, Clone, Default)]
     pub struct Vertex {
@@ -294,11 +294,11 @@ pub mod graphs {
     }
     
     #[derive(Debug, Clone)]
-    pub struct DicGraph<D, V = usize, E = ()> {
+    pub struct DicGraph<D, V: VertexId, E> {
       vertices: D,
       edges: Vec<Edge<V, E>>,
     }
-    impl<D: Dic<usize, Vertex>, V, E> DicGraph<D, V, E> {
+    impl<D: Dic<V, Vertex>, V: VertexId, E> DicGraph<D, V, E> {
       pub fn new() -> Self {
         Self {
           vertices: D::new(),
