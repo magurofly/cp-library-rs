@@ -1,5 +1,5 @@
 pub mod graphs {
-  // Last Update: 2021-06-18 11:30
+  // Last Update: 2021-06-18 13:00
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
@@ -94,20 +94,20 @@ pub mod graphs {
       self.walk(from, |walker, u| self.each_edge_from(u, |e| if walker.go_later(self.edge(e).to()) { (f)(self.edge(e)) } ) );
     }
     
-    fn shortest_path_bfs<T: Measure>(&self, from: V) -> FxHashMap<V, Option<T>> {
+    fn shortest_path_bfs<T: Measure>(&self, from: V) -> FxHashMap<V, T> {
       let mut dist = FxHashMap::default();
-      dist.insert(from, Some(T::zero()));
-      self.bfs(from, |edge| { dist.insert(edge.to(), dist.get(&edge.from()).and_then(|pd| pd.map(|d| d + T::one() ))); });
+      dist.insert(from, T::zero());
+      self.bfs(from, |edge| { dist.insert(edge.to(), dist[&edge.from()] + T::one()); });
       dist
     }
 
-    fn shortest_path_bfs_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, Option<C>> {
+    fn shortest_path_bfs_by<C: Measure>(&self, from: V, mut f: impl FnMut(&Self::Edge, C) -> Option<C>) -> FxHashMap<V, C> {
       let mut dist = FxHashMap::default();
-      dist.insert(from, Some(C::zero()));
+      dist.insert(from, C::zero());
       self.walk(from, |walker, u| self.each_edge_from(u, |e| {
-        if let Some(d) = (f)(self.edge(e), dist.get(&u).unwrap().unwrap()) {
+        if let Some(d) = (f)(self.edge(e), dist[&u]) {
           if walker.go_later(self.edge(e).to()) {
-            dist.insert(self.edge(e).to(), Some(d));
+            dist.insert(self.edge(e).to(), d);
           }
         }
       }));
