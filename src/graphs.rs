@@ -1,9 +1,9 @@
 pub mod graphs {
-  // Last Update: 2021-06-18 13:30
+  // Last Update: 2021-06-19 00:42
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
-  // pub use sub_graph::SubGraph;
+  pub use sub_graph::SubGraph;
 
   pub trait VertexId: Copy + Clone + Eq + std::hash::Hash {}
   impl<V: Copy + Clone + Eq + std::hash::Hash> VertexId for V {}
@@ -55,6 +55,25 @@ pub mod graphs {
     fn dfs(&self, from: V, mut f: impl FnMut(&Self::Edge)) {
       self.walk(from, |walker, u| self.each_edge_from(u, |e| if walker.go_next(self.edge(e).to()) { (f)(self.edge(e)) } ) );
     }
+
+    // /// do DFS in postorder
+    // fn dfs_postorder(&self, from: V, mut f: impl FnMut(V)) {
+    //   let mut stack = vec![from];
+    //   let mut visited = FxHashSet::default();
+    //   while let Some(u) = stack.pop() {
+    //     if visited.contains(&u) {
+    //       (f)(u);
+    //     } else {
+    //       visited.insert(u);
+    //       stack.push(u);
+    //       self.each_adjacent_vertex(u, |v| {
+    //         if !visited.contains(&v) {
+    //           stack.push(v);
+    //         }
+    //       });
+    //     }
+    //   }
+    // }
 
     fn eulertour(&self, from: V, mut f: impl FnMut(&Self::Edge)) {
       let mut visited = vec![false; self.m()];
@@ -181,30 +200,30 @@ pub mod graphs {
       self.shortest_paths_floyd_warshall_by(true, |edge| Some(*edge.weight()) )
     }
 
-    // fn minimum_spanning_tree_prim_by<C: Measure, F: FnMut(&Self::Edge) -> Option<C>>(&self, root: usize, mut f: F) -> (C, SubGraph<'_, V, E, Self>) {
-    //   let mut cost = C::zero();
-    //   let mut included = vec![false; self.n()];
-    //   let mut vertices = vec![root];
-    //   let mut edges = Vec::new();
-    //   let mut pq = self.edges_from(root).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ).collect::<BinaryHeap<_>>();
-    //   included[root] = true;
-    //   while let Some((Reverse(c), e)) = pq.pop() {
-    //     let to = self.edge(e).to();
-    //     if included[to] { continue }
-    //     included[to] = true;
-    //     vertices.push(to);
-    //     edges.push(e);
-    //     cost += c;
-    //     for x in self.edges_from(to).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ) {
-    //       pq.push(x);
-    //     }
-    //   }
-    //   (cost, SubGraph::new(self, vertices, edges))
-    // }
+    fn minimum_spanning_tree_prim_by<C: Measure, F: FnMut(&Self::Edge) -> Option<C>>(&self, root: V, mut f: F) -> (C, SubGraph<'_, V, E, Self>) where E: Clone {
+      let mut cost = C::zero();
+      let mut included = FxHashSet::default();
+      let mut vertices = vec![root];
+      let mut edges = Vec::new();
+      let mut pq = self.edges_from(root).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ).collect::<BinaryHeap<_>>();
+      included.insert(root);
+      while let Some((Reverse(c), e)) = pq.pop() {
+        let to = self.edge(e).to();
+        if included.contains(&to) { continue }
+        included.insert(to);
+        vertices.push(to);
+        edges.push(e);
+        cost += c;
+        for x in self.edges_from(to).into_iter().filter_map(|e| (f)(self.edge(e)).map(|c| (Reverse(c), e) ) ) {
+          pq.push(x);
+        }
+      }
+      (cost, SubGraph::new(self, vertices, edges))
+    }
 
-    // fn minimum_spanning_tree_prim(&self, root: usize) -> (E, SubGraph<'_, V, E, Self>) where E: Measure {
-    //   self.minimum_spanning_tree_prim_by(root, |edge| Some(*edge.weight()) )
-    // }
+    fn minimum_spanning_tree_prim(&self, root: V) -> (E, SubGraph<'_, V, E, Self>) where E: Measure {
+      self.minimum_spanning_tree_prim_by(root, |edge| Some(*edge.weight()) )
+    }
   }
   
   pub trait GraphMut<V: VertexId, E>: Graph<V, E> where Self::Vertex: VertexMut, Self::Edge: EdgeMut<V, E> {
@@ -383,77 +402,100 @@ pub mod graphs {
     }
   }
 
-  // pub mod sub_graph {
-  //   use super::{Graph, VertexId, Edge as _};
-  //   use rustc_hash::FxHashMap;
-  //   use std::marker::PhantomData;
+  pub mod sub_graph {
+    use super::{Graph, VertexId, Edge as _};
+    use rustc_hash::FxHashMap;
+    use std::marker::PhantomData;
 
-  //   #[derive(Debug)]
-  //   pub struct SubGraph<'a, V: VertexId, E, G: Graph<V, E> + ?Sized> {
-  //     origin: &'a G,
-  //     vertices: Vec<V>,
-  //     edges: Vec<Edge<E>>,
-  //     vertex_map: FxHashMap<V, usize>,
-  //     phantom: PhantomData<(V, E)>,
-  //   }
-  //   impl<'a, V: VertexId, E, G: Graph<V, E> + ?Sized> SubGraph<'a, V, E, G> {
-  //     pub fn new(origin: &'a G, vertices: Vec<V>, edges: Vec<usize>) -> Self {
-  //       let mut vertex_map = FxHashMap::default();
-  //       for (u, &v) in vertices.iter().enumerate() {
-  //         vertex_map.insert(v, u);
-  //       }
-  //       let edges = edges.into_iter().map(|e| {
-  //         let edge = origin.edge(e);
-  //         Edge { from: *vertex_map.get(&edge.from()).unwrap(), to: *vertex_map.get(&edge.to()).unwrap(), weight: edge.weight().clone() }
-  //       }).collect::<Vec<_>>();
-  //       Self { origin, vertices, edges, vertex_map, phantom: PhantomData }
-  //     }
+    #[derive(Debug)]
+    pub struct SubGraph<'a, V: VertexId, E, G: Graph<V, E> + ?Sized> {
+      origin: &'a G,
+      vertices: Vec<V>,
+      edges: Vec<Edge<E>>,
+      vertex_map: FxHashMap<V, usize>,
+      edge_map: FxHashMap<usize, usize>,
+      phantom: PhantomData<(V, E)>,
+    }
+    impl<'a, V: VertexId, E: Clone, G: Graph<V, E> + ?Sized> SubGraph<'a, V, E, G> {
+      pub fn new(origin: &'a G, vertices: Vec<V>, edges: Vec<usize>) -> Self {
+        let mut vertex_map = FxHashMap::default();
+        for (u, &v) in vertices.iter().enumerate() {
+          vertex_map.insert(v, u);
+        }
+        let mut edge_map = FxHashMap::default();
+        let mut edge_count = 0;
+        let edges = edges.into_iter().map(|e| {
+          let edge = origin.edge(e);
+          edge_map.insert(e, edge_count);
+          edge_count += 1;
+          Edge { from: *vertex_map.get(&edge.from()).unwrap(), to: *vertex_map.get(&edge.to()).unwrap(), weight: edge.weight().clone() }
+        }).collect::<Vec<_>>();
+        Self { origin, vertices, edges, vertex_map, edge_map, phantom: PhantomData }
+      }
 
-  //     pub fn lookup_vertex(&self, id: V) -> Option<usize> { self.vertex_map.get(&id).copied() }
-  //   }
-  //   impl<'a, V: VertexId, E, G: Graph<V, E> + ?Sized> Graph<usize, E> for SubGraph<'a, V, E, G> {
-  //     type Vertex = G::Vertex;
-  //     type Edge = Edge<E>;
+      pub fn lookup_vertex(&self, id: V) -> Option<usize> { self.vertex_map.get(&id).copied() }
+    }
+    impl<'a, V: VertexId, E: Clone, G: Graph<V, E> + ?Sized> Graph<usize, E> for SubGraph<'a, V, E, G> {
+      type Vertex = G::Vertex;
+      type Edge = Edge<E>;
 
-  //     fn n(&self) -> usize { self.vertices.len() }
-  //     fn m(&self) -> usize { self.edges.len() }
+      fn n(&self) -> usize { self.vertices.len() }
+      fn m(&self) -> usize { self.edges.len() }
 
-  //     fn each_vertex(&self, mut f: impl FnMut(usize)) { for i in 0 .. self.n() { (f)(i) } }
+      fn each_vertex(&self, mut f: impl FnMut(usize)) { for i in 0 .. self.n() { (f)(i) } }
 
-  //     fn vertex(&self, id: usize) -> &Self::Vertex {
-  //       assert!(id < self.n());
-  //       self.origin.vertex(self.vertices[id])
-  //     }
+      fn vertex(&self, id: usize) -> &Self::Vertex {
+        assert!(id < self.n());
+        self.origin.vertex(self.vertices[id])
+      }
 
-  //     fn edge(&self, id: usize) -> &Self::Edge {
-  //       use super::Edge as _;
-  //       assert!(id < self.m());
-  //       &self.edges[id]
-  //     }
+      fn edge(&self, id: usize) -> &Self::Edge {
+        use super::Edge as _;
+        assert!(id < self.m());
+        &self.edges[id]
+      }
 
-  //     fn edges_from(&self, from: usize) -> Vec<usize> {
-  //       assert!(from < self.n());
-  //       self.origin.edges_from(self.vertices[from]).into_iter().filter_map(|e| self.edges.binary_search(&e).ok() ).collect::<Vec<_>>()
-  //     }
+      fn edges_from(&self, from: usize) -> Vec<usize> {
+        assert!(from < self.n());
+        self.origin.edges_from(self.vertices[from]).into_iter().filter_map(|e| self.edge_map.get(&e).copied() ).collect::<Vec<_>>()
+      }
 
-  //     fn adjacent_vertices(&self, from: usize) -> Vec<usize> {
-  //       assert!(from < self.n());
-  //       self.origin.adjacent_vertices(self.vertices[from]).into_iter().filter_map(|v| self.lookup_vertex(v) ).collect::<Vec<_>>()
-  //     }
-  //   }
+      fn adjacent_vertices(&self, from: usize) -> Vec<usize> {
+        assert!(from < self.n());
+        self.origin.adjacent_vertices(self.vertices[from]).into_iter().filter_map(|v| self.lookup_vertex(v) ).collect::<Vec<_>>()
+      }
+    }
 
-  //   #[derive(Clone, Copy, Debug)]
-  //   pub struct Edge<E> {
-  //     from: usize,
-  //     to: usize,
-  //     weight: E,
-  //   }
-  //   impl<E> super::Edge<usize, E> for Edge<E> {
-  //     fn from(&self) -> usize { self.from }
-  //     fn to(&self) -> usize { self.to }
-  //     fn weight(&self) -> &E { &self.weight }
-  //   }
-  // }
+    #[derive(Clone, Copy, Debug)]
+    pub struct Edge<E> {
+      from: usize,
+      to: usize,
+      weight: E,
+    }
+    impl<E> super::Edge<usize, E> for Edge<E> {
+      fn from(&self) -> usize { self.from }
+      fn to(&self) -> usize { self.to }
+      fn weight(&self) -> &E { &self.weight }
+    }
+  }
+
+  pub mod grid_graph {
+    pub struct GridGraph {
+      rows: usize,
+      columns: usize,
+      grid: Vec<Vec<char>>,
+    }
+
+    impl GridGraph {
+      fn new(rows: usize, columns: usize, grid: Vec<Vec<char>>) -> Self { Self { rows, columns, grid } }
+    }
+
+    impl super::Vertex for char {}
+
+    // impl Graph<(usize, usize), ()> for GridGraph {
+    //   fn 
+    // }
+  }
   
   impl<V: VertexId> Walker<V> {
     fn new() -> Self {
