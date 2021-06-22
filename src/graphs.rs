@@ -1,9 +1,10 @@
 pub mod graphs {
-  // Last Update: 2021-06-23 00:37
+  // Last Update: 2021-06-23 02:34
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
-  // pub use sub_graph::SubGraph;
+  pub use sub_graph::SubGraph;
+  pub use grid_graph::GridGraph;
 
   pub trait VertexId: Copy + Clone + Eq + std::hash::Hash {}
   impl<V: Copy + Clone + Eq + std::hash::Hash> VertexId for V {}
@@ -565,26 +566,9 @@ pub mod graphs {
   }
   
   impl<V: VertexId> Walker<V> {
-    pub fn new() -> Self {
-      Self {
-        visited: FxHashSet::default(),
-        queue: VecDeque::new(),
-      }
-    }
-    pub fn go_next(&mut self, v: V) -> bool {
-      if self.visited.insert(v) {
-        self.queue.push_back(v);
-        return true;
-      }
-      false
-    }
-    pub fn go_later(&mut self, v: V) -> bool {
-      if self.visited.insert(v) {
-        self.queue.push_front(v);
-        return true;
-      }
-      false
-    }
+    pub fn new() -> Self { Self { visited: FxHashSet::default(), queue: VecDeque::new() } }
+    pub fn go_next(&mut self, v: V) -> bool { self.visited.insert(v) && { self.queue.push_back(v); true } }
+    pub fn go_later(&mut self, v: V) -> bool { self.visited.insert(v) && { self.queue.push_front(v); true } }
     pub fn forget(&mut self, v: V) -> bool { self.visited.remove(&v) }
     pub fn is_visited(&self, v: V) -> bool { self.visited.contains(&v) }
   }
@@ -606,50 +590,29 @@ pub mod graphs {
     
     pub trait AssignOps: Sized + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign {}
     pub trait Measure: std::fmt::Debug + Num + Default + Ord + Copy + AssignOps + std::iter::Sum {
-      fn chmin(&mut self, other: Self) -> &mut Self { if *self > other { *self = other }; self }
-      fn chmax(&mut self, other: Self) -> &mut Self { if *self < other { *self = other }; self }
       fn if_chmin(&mut self, other: Self, f: impl FnOnce()) -> &mut Self { if *self > other { *self = other; (f)() }; self }
       fn if_chmax(&mut self, other: Self, f: impl FnOnce()) -> &mut Self { if *self < other { *self = other; (f)() }; self }
+      fn chmin(&mut self, other: Self) -> &mut Self { self.if_chmin(other, || {}) }
+      fn chmax(&mut self, other: Self) -> &mut Self { self.if_chmax(other, || {}) }
     }
     pub trait MeasureSigned: Measure + Signed {}
     
     pub trait OptionUtil<T>: Sized {
       fn unwrap(self) -> T;
+      fn borrow(&self) -> &T;
       fn is_some(&self) -> bool;
       fn insert(&mut self, value: T) -> &mut T;
-      fn chmin(&mut self, other: T) -> &mut Self where Self: Clone, T: Clone + Ord {
-        let value = if self.is_some() { self.clone().unwrap().min(other) } else { other };
-        self.insert(value);
-        self
-      }
-      fn chmax(&mut self, other: T) -> &mut Self where Self: Clone, T: Clone + Ord {
-        let value = if self.is_some() { self.clone().unwrap().max(other) } else { other };
-        self.insert(value);
-        self
-      }
       fn and_if(self, f: impl FnOnce(T) -> bool) -> bool { self.is_some() && (f)(self.unwrap()) }
-      fn if_chmin(&mut self, other: T, f: impl FnOnce()) -> &mut Self where Self: Clone, T: Clone + Ord {
-        if !self.is_some() || self.clone().unwrap() > other {
-          self.insert(other);
-          (f)();
-        }
-        self
-      }
-      fn if_chmax(&mut self, other: T, f: impl FnOnce()) -> &mut Self where Self: Clone, T: Clone + Ord {
-        if !self.is_some() || self.clone().unwrap() < other {
-          self.insert(other);
-          (f)();
-        }
-        self
-      }
+      fn if_chmin(&mut self, other: T, f: impl FnOnce()) -> &mut Self where T: PartialOrd { if !self.is_some() || self.borrow().gt(&other) { self.insert(other); (f)() }; self }
+      fn if_chmax(&mut self, other: T, f: impl FnOnce()) -> &mut Self where T: PartialOrd { if !self.is_some() || self.borrow().lt(&other) { self.insert(other); (f)() }; self }
+      fn chmin(&mut self, other: T) -> &mut Self where T: PartialOrd { self.if_chmin(other, || {}) }
+      fn chmax(&mut self, other: T) -> &mut Self where T: PartialOrd { self.if_chmax(other, || {}) }
     }
     impl<T> OptionUtil<T> for Option<T> {
-      fn unwrap(self) -> T { Option::<T>::unwrap(self) }
-      fn is_some(&self) -> bool { Option::<T>::is_some(self) }
-      fn insert(&mut self, value: T) -> &mut T {
-        *self = Some(value);
-        self.as_mut().unwrap()
-      }
+      fn unwrap(self) -> T { Option::unwrap(self) }
+      fn borrow(&self) -> &T { Option::unwrap(self.as_ref()) }
+      fn is_some(&self) -> bool { Option::is_some(self) }
+      fn insert(&mut self, value: T) -> &mut T { *self = Some(value); self.as_mut().unwrap() }
     }
     
     impl<T: Sized + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign> AssignOps for T {}
@@ -666,24 +629,13 @@ pub mod graphs {
     inq: FxHashSet<T>,
   }
   impl<T: Clone + Eq + std::hash::Hash> Uniqueue<T> {
-    fn new() -> Self {
-      Self { queue: VecDeque::new(), inq: FxHashSet::default() }
-    }
-
+    fn new() -> Self { Self { queue: VecDeque::new(), inq: FxHashSet::default() } }
     fn push_front(&mut self, value: T) {
       if self.inq.contains(&value) { return };
       self.inq.insert(value.clone());
       self.queue.push_front(value);
     }
-
-    fn pop_back(&mut self) -> Option<T> {
-      if let Some(value) = self.queue.pop_back() {
-        self.inq.remove(&value);
-        Some(value)
-      } else {
-        None
-      }
-    }
+    fn pop_back(&mut self) -> Option<T> { self.queue.pop_back().map(|value| { self.inq.remove(&value); value }) }
   }
 
   #[derive(Copy, Clone)]
