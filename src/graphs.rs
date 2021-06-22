@@ -1,5 +1,5 @@
 pub mod graphs {
-  // Last Update: 2021-06-22 20:27
+  // Last Update: 2021-06-23 00:37
   #![allow(unused_imports, dead_code)]
   
   pub use dic_graph::{DicGraph, VecGraph, HashGraph};
@@ -492,43 +492,101 @@ pub mod graphs {
     }
 
     impl GridGraph {
-      fn new(rows: usize, columns: usize, grid: Vec<Vec<char>>) -> Self { Self { rows, columns, grid } }
+      pub fn new(rows: usize, columns: usize, grid: Vec<Vec<char>>) -> Self { Self { rows, columns, grid } }
+      pub fn rows(&self) -> usize { self.rows }
+      pub fn columns(&self) -> usize { self.columns }
+      pub fn valid_vertex(&self, v: (usize, usize)) -> bool { v.0 < self.rows && v.1 < self.columns }
     }
 
     impl super::Vertex for char {}
 
-    // impl Graph<(usize, usize), ()> for GridGraph {
-    //   fn 
-    // }
+    impl super::Graph<(usize, usize), ()> for GridGraph {
+      type Vertex = char;
+      type Edge = Edge;
+
+      fn n(&self) -> usize { self.rows * self.columns }
+      fn m(&self) -> usize { (self.rows * self.columns - self.rows - self.columns) * 2 }
+
+      fn each_vertex(&self, mut f: impl FnMut((usize, usize))) { for i in 0 .. self.rows { for j in 0 .. self.columns { (f)((i, j)) } } }
+
+      fn vertex(&self, id: (usize, usize)) -> &Self::Vertex {
+        assert!(self.valid_vertex(id));
+        &self.grid[id.0][id.1]
+      }
+      fn edge(&self, e: usize) -> &Self::Edge {
+        assert!(e < self.m());
+        let f = e >> 1;
+        let (mut from, mut to) = if f < self.rows * (self.columns - 1) {
+          let (i, j) = (f / (self.columns - 1), f % (self.columns - 1));
+          ((i, j), (i, j + 1))
+        } else {
+          let f = f - self.rows * (self.columns - 1);
+          let (i, j) = (f / self.columns, f / self.columns);
+          ((i, j), (i + 1, j))
+        };
+        if (e & 1) == 1 {
+          std::mem::swap(&mut from, &mut to);
+        }
+        Box::leak(Box::new(Edge { from, to }))
+      }
+
+      fn edges_from(&self, from: (usize, usize)) -> Vec<usize> {
+        assert!(self.valid_vertex(from));
+        let mut edges = vec![];
+        let (i, j) = from;
+        if j + 1 < self.columns { edges.push(i * (self.columns - 1) + (j - 1) << 1 | 0) }
+        if j > 1 { edges.push(i * (self.columns - 1) + j << 1 | 1) }
+        if i > 1 { edges.push(self.rows * (self.columns - 1) + i * self.columns + j << 1 | 0) }
+        if i + 1 < self.rows { edges.push(self.rows * (self.columns - 1) + (i - 1) * self.columns + j << 1 | 0) }
+        edges
+      }
+
+      fn adjacent_vertices(&self, from: (usize, usize)) -> Vec<(usize, usize)> {
+        assert!(self.valid_vertex(from));
+        let mut vertices = vec![];
+        let (i, j) = from;
+        if j + 1 < self.columns { vertices.push((i, j + 1)) }
+        if j > 1 { vertices.push((i, j - 1)) }
+        if i > 1 { vertices.push((i + 1, j)) }
+        if i + 1 < self.rows { vertices.push((i - 1, j)) }
+        vertices
+      }
+    }
+
+    pub struct Edge {
+      from: (usize, usize),
+      to: (usize, usize),
+    }
+    impl super::Edge<(usize, usize), ()> for Edge {
+      fn from(&self) -> (usize, usize) { self.from }
+      fn to(&self) -> (usize, usize) { self.to }
+      fn weight(&self) -> &() { &() }
+    }
   }
   
   impl<V: VertexId> Walker<V> {
-    fn new() -> Self {
+    pub fn new() -> Self {
       Self {
         visited: FxHashSet::default(),
         queue: VecDeque::new(),
       }
     }
-    
-    fn go_next(&mut self, v: V) -> bool {
+    pub fn go_next(&mut self, v: V) -> bool {
       if self.visited.insert(v) {
         self.queue.push_back(v);
         return true;
       }
       false
     }
-    
-    fn go_later(&mut self, v: V) -> bool {
+    pub fn go_later(&mut self, v: V) -> bool {
       if self.visited.insert(v) {
         self.queue.push_front(v);
         return true;
       }
       false
     }
-    
-    fn forget(&mut self, v: V) -> bool { self.visited.remove(&v) }
-
-    fn is_visited(&self, v: V) -> bool { self.visited.contains(&v) }
+    pub fn forget(&mut self, v: V) -> bool { self.visited.remove(&v) }
+    pub fn is_visited(&self, v: V) -> bool { self.visited.contains(&v) }
   }
   impl<V: VertexId> Iterator for Walker<V> {
     type Item = V;
@@ -548,28 +606,10 @@ pub mod graphs {
     
     pub trait AssignOps: Sized + std::ops::AddAssign + std::ops::SubAssign + std::ops::MulAssign + std::ops::DivAssign + std::ops::RemAssign {}
     pub trait Measure: std::fmt::Debug + Num + Default + Ord + Copy + AssignOps + std::iter::Sum {
-      fn chmin(&mut self, other: Self) -> &mut Self {
-        if *self > other { *self = other }
-        self
-      }
-      fn chmax(&mut self, other: Self) -> &mut Self {
-        if *self < other { *self = other }
-        self
-      }
-      fn if_chmin(&mut self, other: Self, f: impl FnOnce()) -> &mut Self {
-        if *self > other {
-          *self = other;
-          (f)();
-        }
-        self
-      }
-      fn if_chmax(&mut self, other: Self, f: impl FnOnce()) -> &mut Self {
-        if *self < other {
-          *self = other;
-          (f)();
-        }
-        self
-      }
+      fn chmin(&mut self, other: Self) -> &mut Self { if *self > other { *self = other }; self }
+      fn chmax(&mut self, other: Self) -> &mut Self { if *self < other { *self = other }; self }
+      fn if_chmin(&mut self, other: Self, f: impl FnOnce()) -> &mut Self { if *self > other { *self = other; (f)() }; self }
+      fn if_chmax(&mut self, other: Self, f: impl FnOnce()) -> &mut Self { if *self < other { *self = other; (f)() }; self }
     }
     pub trait MeasureSigned: Measure + Signed {}
     
