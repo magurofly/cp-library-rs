@@ -1,4 +1,5 @@
 pub mod modint {
+  // Last Update: 2021-07-02 19:19
   thread_local!(static MOD: RefCell<u64> = RefCell::new(1_000_000_007));
 
   #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,6 +42,7 @@ pub mod modint {
   impl_ops!(Div, div, div_assign, Self);
 
   impl<N: Int> ops::Rem for ModInt<N> { type Output = Self; fn rem(self, other: Self) -> Self { Self::with_mod(self.value, other.value) } }
+  impl<N: Int> ops::Neg for ModInt<N> { type Output = Self; fn neg(self) -> Self { Self::with_mod(self.modulus - self.value, self.modulus) } }
   impl<N: Int + FromStr + From<u64>> FromStr for ModInt<N> { type Err = N::Err; fn from_str(s: &str) -> Result<Self, N::Err> { Ok(Self::new(N::from_str(s)?)) } }
   impl<N: Int + fmt::Display> fmt::Display for ModInt<N> { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.value.fmt(f) } }
 
