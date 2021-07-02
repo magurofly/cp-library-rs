@@ -1,6 +1,6 @@
 pub mod modint {
-  // Last Update: 2021-07-02 19:19
-  thread_local!(static MOD: RefCell<u64> = RefCell::new(1_000_000_007));
+  // Last Update: 2021-07-02 19:23
+  thread_local!(static MOD: RefCell<i64> = RefCell::new(1_000_000_007));
 
   #[derive(Debug, Clone, Copy, PartialEq, Eq)]
   pub struct ModInt<N: Int> {
@@ -10,8 +10,8 @@ pub mod modint {
 
   impl<N: Int> ModInt<N> {
     pub fn with_mod(value: N, modulus: N) -> Self { assert!(N::from(2) <= modulus); Self { value: value.rem_euclid(modulus), modulus } }
-    pub fn new(value: N) -> Self where N: From<u64> { let m = N::from(MOD.with(|m| *m.borrow())); Self::with_mod(value.rem_euclid(m), m) }
-    pub fn set_mod(modulus: impl Into<u64>) { MOD.with(|m| *m.borrow_mut() = modulus.into()); }
+    pub fn new(value: N) -> Self where N: From<i64> { let m = N::from(MOD.with(|m| *m.borrow())); Self::with_mod(value.rem_euclid(m), m) }
+    pub fn set_mod(modulus: impl Into<i64>) { MOD.with(|m| *m.borrow_mut() = modulus.into()); }
     pub fn value(self) -> N { self.value }
     pub fn modulus(self) -> N { self.modulus }
     pub fn pow(self, mut n: u64) -> Self { let mut r = Self { value: N::from(1), modulus: self.modulus }; let mut a = self; while n != 0 { if (n & 1) == 1 { r = r * a; } a = a * a; n >>= 1; } r }
@@ -43,8 +43,9 @@ pub mod modint {
 
   impl<N: Int> ops::Rem for ModInt<N> { type Output = Self; fn rem(self, other: Self) -> Self { Self::with_mod(self.value, other.value) } }
   impl<N: Int> ops::Neg for ModInt<N> { type Output = Self; fn neg(self) -> Self { Self::with_mod(self.modulus - self.value, self.modulus) } }
-  impl<N: Int + FromStr + From<u64>> FromStr for ModInt<N> { type Err = N::Err; fn from_str(s: &str) -> Result<Self, N::Err> { Ok(Self::new(N::from_str(s)?)) } }
+  impl<N: Int + FromStr + From<i64>> FromStr for ModInt<N> { type Err = N::Err; fn from_str(s: &str) -> Result<Self, N::Err> { Ok(Self::new(N::from_str(s)?)) } }
   impl<N: Int + fmt::Display> fmt::Display for ModInt<N> { fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result { self.value.fmt(f) } }
+  impl<N: Int + From<i64>> From<N> for ModInt<N> { fn from(value: N) -> Self { Self::new(value) } }
 
   pub trait Int: Clone + Copy + ops::Add<Output = Self> + ops::Sub<Output = Self> + ops::Mul<Output = Self> + ops::Div<Output = Self> + ops::Rem<Output = Self> + PartialEq + PartialOrd + From<u8> {
     fn rem_euclid(self, m: Self) -> Self { let mut x = self % m; if x < Self::from(0) { x = x + m; } x }
