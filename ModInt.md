@@ -14,6 +14,7 @@
 ### デフォルトの mod を設定
 
 ```rust
+use modint::ModInt;
 
 // mod を設定
 ModInt::set_mod(998244353);
