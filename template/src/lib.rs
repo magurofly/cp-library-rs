@@ -1,5 +1,6 @@
 use std::*;
 use collections::*;
+use iter::*;
 
 pub fn say(x: impl fmt::Display) { println!("{}", x); }
 
@@ -16,6 +17,12 @@ pub trait MyItertools : Iterator {
   // fn cumprod<F: Fn(Self::Item, Self::Item) -> Self::Item>(self, init: Self::Item, f: F) -> CumProd<Self, Self::Item, F> where Self: Sized, Self::Item: Copy { CumProd { prod: init, f, iter: self } }
 }
 impl<T: ?Sized> MyItertools for T where T: Iterator {}
+
+pub trait MyIntoIter : IntoIterator where Self: Sized {
+  fn convert<U, V: FromIterator<U>>(self, f: impl FnMut(Self::Item) -> U) -> V { self.into_iter().map(f).collect() }
+  fn implode(self, sep: &str) -> String where Self::Item: fmt::Display { self.into_iter().map(|x| format!("{}", x)).to_vec().join(sep) }
+}
+impl<T> MyIntoIter for T where T: IntoIterator {}
 
 pub trait MyOrd : PartialOrd + Sized {
   fn max(self, other: Self) -> Self { if &self < &other { other } else { self } }
