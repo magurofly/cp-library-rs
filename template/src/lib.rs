@@ -8,6 +8,37 @@ pub fn yesno(c: bool) { println!("{}", if c { "Yes" } else { "No" }); }
 pub fn yes() { yesno(true); }
 pub fn no() { yesno(false); }
 
+pub struct CompressCoords<T> {
+  coords: Vec<T>,
+}
+impl<T: Ord> CompressCoords<T> {
+  pub fn new() -> Self {
+    Self { coords: Vec::new() }
+  }
+
+  pub fn append(&mut self, i: impl IntoIterator<Item = T>) {
+    let i = i.into_iter();
+    self.coords.reserve(i.size_hint().0);
+    for x in i {
+      self.coords.push(x);
+    }
+    self.coords.sort();
+  }
+
+  pub fn add(&mut self, x: T) {
+    self.coords.push(x);
+    self.coords.sort();
+  }
+
+  pub fn index_of(&self, x: &T) -> Option<usize> {
+    self.coords.binary_search(x).ok()
+  }
+
+  pub fn get(&self, x: &T) -> usize {
+    self.index_of(x).unwrap()
+  }
+}
+
 pub trait MyItertools : Iterator {
   fn to_vec(self) -> Vec<Self::Item> where Self: Sized { self.collect::<Vec<_>>() }
   fn to_vec_reversed(self) -> Vec<Self::Item> where Self: Sized { let mut v = self.collect::<Vec<_>>(); v.reverse(); v }
