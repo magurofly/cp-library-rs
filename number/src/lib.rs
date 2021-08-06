@@ -46,10 +46,12 @@ pub trait Int: PrimInt {
     r
   }
 
+  /// mod m 上の逆元を返す
   fn inv_mod(self, m: Self) -> Self {
     self.inv_gcd(m).1
   }
 
+  /// `(gcd(self, b), self^-1 mod b)` を返す
   fn inv_gcd(self, b: Self) -> (Self, Self) {
     let a = self % b;
     if a.is_zero() {
@@ -84,7 +86,8 @@ pub trait Int: PrimInt {
     self * other / self.gcd(other)
   }
 
-  /// Deterministic Miller Rabin or Trial Division
+  /// 素数判定する
+  /// 計算量: O(sqrt self) もしくは O(log self)
   fn is_prime(self) -> bool {
     let two = Self::one() + Self::one();
     let three = two + Self::one();
@@ -167,7 +170,8 @@ pub trait Int: PrimInt {
     miller_rabin_test(self, base)
   }
 
-  /// complexity: O(sqrt self)
+  /// 素因数を小さい順に `Vec` で返す
+  /// 計算量: O(sqrt self)
   fn prime_division(self) -> Vec<Self> {
     let mut divisors = vec![];
     let mut x = self;
@@ -185,7 +189,7 @@ pub trait Int: PrimInt {
     divisors
   }
 
-  /// Returns one of primitive roots if exists
+  /// 原始根のひとつを返す（存在すれば）
   fn primitive_root(self) -> Option<Self> {
     if self.is(2) {
       return Self::from(1)
@@ -231,6 +235,49 @@ pub trait Int: PrimInt {
         return Some(g);
       }
       g = g.add1();
+    }
+  }
+
+  /// `self` 以下の正整数で `self` と互いに素なものの個数
+  fn euler_phi(self) -> Self {
+    let mut n = self;
+    let mut r = self;
+    let mut i = Self::one() + Self::one();
+    while i * i <= n {
+      if (n % i).is_zero() {
+        r = r - r / i;
+        while (n % i).is_zero() {
+          n = n / i;
+        }
+      }
+      i = i.add1();
+    }
+    r
+  }
+
+  /// `self↑↑e mod m` を返す
+  /// 計算量 O(sqrt m)
+  /// https://ei1333.github.io/library/math/combinatorics/mod-tetration.cpp
+  fn tetration_mod(self, e: Self, m: Self) -> Self {
+    if m.is_one() {
+      Self::zero()
+    } else if self.is_zero() {
+      if e.is_odd() {
+        Self::zero()
+      } else {
+        Self::one()
+      }
+    } else if e.is_one() {
+      self % m
+    } else if e.is(2) {
+      self.pow_mod(self, m)
+    } else {
+      let phi = m.euler_phi();
+      let mut t = self.tetration_mod(e.sub1(), phi);
+      if t.is_zero() {
+        t = t + phi;
+      }
+      self.pow_mod(t, m)
     }
   }
 }
