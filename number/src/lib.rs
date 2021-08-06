@@ -46,6 +46,29 @@ pub trait Int: PrimInt {
     r
   }
 
+  fn inv_mod(self, m: Self) -> Self {
+    self.inv_gcd(m).1
+  }
+
+  fn inv_gcd(self, b: Self) -> (Self, Self) {
+    let a = self % b;
+    if a.is_zero() {
+      return (b, Self::zero());
+    }
+    let mut x = (b, Self::zero());
+    let mut y = (a, Self::one());
+    while !y.0.is_zero() {
+      let u = x.0 / y.0;
+      x.0 = x.0 - y.0 * u;
+      x.1 = x.1 - y.1 * u;
+      std::mem::swap(&mut x, &mut y);
+    }
+    if x.1 < Self::zero() {
+      x.1 = x.1 + b / x.0;
+    }
+    x
+  }
+
   fn gcd(self, other: Self) -> Self {
     let mut x = self.max(other);
     let mut y = self.min(other);
