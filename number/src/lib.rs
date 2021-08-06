@@ -1,6 +1,22 @@
 use num_traits::*;
 
 pub trait Int: PrimInt {
+  fn is<U: PrimInt>(self, other: U) -> bool {
+    Self::from(other).map(|x| self == x).unwrap_or(false)
+  }
+
+  fn at(self, idx: usize) -> bool {
+    (self >> idx & Self::one()).is_one()
+  }
+
+  fn add1(self) -> Self {
+    self + Self::one()
+  }
+
+  fn sub1(self) -> Self {
+    self - Self::one()
+  }
+
   fn bit_len(self) -> usize {
     (Self::zero().leading_zeros() - self.leading_zeros()) as usize
   }
@@ -11,6 +27,10 @@ pub trait Int: PrimInt {
 
   fn is_odd(self) -> bool {
     (self & Self::one()).is_one()
+  }
+
+  fn div_ceil(self, other: Self) -> Self {
+    (self + other - Self::one()) / other
   }
 
   fn pow_mod(self, mut e: impl Int, m: Self) -> Self {
@@ -41,7 +61,7 @@ pub trait Int: PrimInt {
     self * other / self.gcd(other)
   }
 
-  /// Deterministic Miller Rabin
+  /// Deterministic Miller Rabin or Trial Division
   fn is_prime(self) -> bool {
     let two = Self::one() + Self::one();
     let three = two + Self::one();
@@ -126,13 +146,70 @@ pub trait Int: PrimInt {
 
   /// complexity: O(sqrt self)
   fn prime_division(self) -> Vec<Self> {
-    todo!()
+    let mut divisors = vec![];
+    let mut x = self;
+    let mut i = Self::one() + Self::one();
+    while i * i <= x {
+      while (x % i).is_zero() {
+        divisors.push(i);
+        x = x / i;
+      }
+      i = i.add1();
+    }
+    if !x.is_one() {
+      divisors.push(x);
+    }
+    divisors
+  }
+
+  /// Returns one of primitive roots if exists
+  fn primitive_root(self) -> Option<Self> {
+    if self.is(2) {
+      return Self::from(1)
+    }
+    if self.is(167772161) || self.is(469762049) || self.is(998244353) {
+      return Self::from(3)
+    }
+    if self.is(754974721) {
+      return Self::from(11)
+    }
+    let mut divs = vec![Self::zero(); 20];
+    divs[0] = Self::from(2)?;
+    let mut cnt = 1;
+    let mut x = self.sub1() >> 1;
+    while x.is_even() {
+      x = x >> 1;
+    }
+    let mut i = Self::from(3)?;
+    while i * i <= x {
+      if (x % i).is_zero() {
+        divs[cnt] = i;
+        cnt += 1;
+        while (x % i).is_zero() {
+          x = x / i;
+        }
+      }
+      i = i + Self::from(2)?;
+    }
+    if x > Self::one() {
+      divs[cnt] = x;
+      cnt += 1;
+    }
+    let mut g = Self::from(2)?;
+    loop {
+      let mut ok = true;
+      for i in 0 .. cnt {
+        if g.pow_mod(self.sub1() / divs[i], self).is_one() {
+          ok = false;
+          break;
+        }
+      }
+      if ok {
+        return Some(g);
+      }
+      g = g.add1();
+    }
   }
 }
 
 impl<T: PrimInt> Int for T {}
-
-fn is_prime_miller_rabin<T: PrimInt>(n: T) -> bool {
-  false
-}
-
