@@ -1,0 +1,9 @@
+[package]
+name = "number"
+version = "0.1.0"
+authors = ["magurofly <fishfishfish@hash.fyi>"]
+edition = "2018"
+license = "CC0-1.0"
+
+[dependencies]
+num-traits = "=0.2.11"
