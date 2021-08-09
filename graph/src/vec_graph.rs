@@ -71,9 +71,8 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
   }
 
   /// DFS をする
-  /// pre(頂点): 先行順
-  /// mid(頂点): 中間
-  /// post(頂点): 後行順
+  /// `f(whence, v)`
+  /// whence: `Pre` (先行順) , `Mid` (中間) , `Post` (後行順)
   /// pre, mid, post をすべてするとオイラーツアーになる
   fn dfs(&self, start: usize, f: impl FnMut(Whence, usize)) where Self: Sized {
     //TODO: 非再帰にする
@@ -92,7 +91,7 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
         if first {
           first = false;
         } else {
-          (dfs.f)(Whence::In, u);
+          (dfs.f)(Whence::Mid, u);
         }
         rec(graph, dfs, e.to());
       }
@@ -226,6 +225,6 @@ impl EdgeData<()> for (usize, usize) {
 
 pub enum Whence {
   Pre,
-  In,
+  Mid,
   Post,
 }
