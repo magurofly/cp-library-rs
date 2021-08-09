@@ -22,6 +22,29 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
       self.add_edge(edge.from(), edge.to(), edge.weight().clone());
     }
   }
+
+  fn dijkstra_by<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, mut cost: impl FnMut(&Ed, C) -> Option<C>) -> Vec<Option<C>> {
+    let mut dists = vec![None; self.n()];
+    dists[start] = Some(C::default());
+    let mut pq = std::collections::BinaryHeap::new();
+    pq.push((std::cmp::Reverse(C::default()), start));
+    while let Some((std::cmp::Reverse(d1), u)) = pq.pop() {
+      if dists[u].unwrap() != d1 { continue }
+      for e in &self[u] {
+        if let Some(d2) = (cost)(e, d1) {
+          if dists[e.to()].map(|d3| d3 > d2 ).unwrap_or(true) {
+            dists[e.to()] = Some(d2);
+            pq.push((std::cmp::Reverse(d2), e.to()));
+          }
+        }
+      }
+    }
+    dists
+  }
+
+  fn dijkstra(&self, start: usize) -> Vec<Option<E>> where E: Copy + std::ops::Add<Output = E> + Default + Ord {
+    self.dijkstra_by(start, |edge, dist| Some(dist + *edge.weight()))
+  }
 }
 
 impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
