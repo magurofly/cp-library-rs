@@ -1,6 +1,16 @@
-use std::*;
-use collections::*;
-use iter::*;
+use num_traits::*;
+
+pub mod compress_coords;
+pub use compress_coords::*;
+
+pub mod cumulated;
+pub use cumulated::*;
+
+use std::fmt;
+use std::hash::Hash;
+use std::ops::{RangeBounds, Bound::*};
+use std::collections::*;
+use std::iter::*;
 
 pub fn say(x: impl fmt::Display) { println!("{}", x); }
 
@@ -8,39 +18,19 @@ pub fn yesno(c: bool) { println!("{}", if c { "Yes" } else { "No" }); }
 pub fn yes() { yesno(true); }
 pub fn no() { yesno(false); }
 
-pub struct CompressCoords<'a, T> {
-  coords: BTreeSet<T>,
-  cache: RefCell<Option<Vec<&'a T>>>,
-}
-impl<'a, T: Clone + Ord> CompressCoords<'a, T> {
-  pub fn new() -> Self {
-    Self { coords: BTreeSet::new(), cache: RefCell::new(None) }
-  }
-
-  pub fn add(&mut self, x: T) {
-    self.coords.insert(x);
-    *self.cache.borrow_mut() = None;
-  }
-
-  pub fn index_of(&self, x: &T) -> Result<usize, usize> {
-    self.cache.borrow_mut()
-    .get_or_insert_with(|| self.coords.iter().cloned().collect())
-    .binary_search(x)
-  }
-
-  pub fn get(&self, x: &T) -> usize {
-    let r = self.index_of(x);
-    r.ok().or(r.err()).unwrap()
-  }
-}
-
 pub trait MyItertools : Iterator {
   fn to_vec(self) -> Vec<Self::Item> where Self: Sized { self.collect::<Vec<_>>() }
   fn to_vec_reversed(self) -> Vec<Self::Item> where Self: Sized { let mut v = self.collect::<Vec<_>>(); v.reverse(); v }
   fn to_vec_of<T: From<Self::Item>>(self) -> Vec<T> where Self: Sized { self.map(|x| x.into()).to_vec() }
   fn try_to_vec_of<T: std::convert::TryFrom<Self::Item>>(self) -> Result<Vec<T>, T::Error> where Self: Sized { let mut xs = Vec::with_capacity(self.size_hint().0); for x in self { xs.push(T::try_from(x)?); } Ok(xs) }
-  fn tally(self) -> HashMap<Self::Item, usize> where Self: Sized, Self::Item: Copy + Eq + hash::Hash { let mut counts = HashMap::new(); self.for_each(|item| *counts.entry(item).or_default() += 1 ); counts }
-  // fn cumprod<F: Fn(Self::Item, Self::Item) -> Self::Item>(self, init: Self::Item, f: F) -> CumProd<Self, Self::Item, F> where Self: Sized, Self::Item: Copy { CumProd { prod: init, f, iter: self } }
+  fn tally(self) -> HashMap<Self::Item, usize> where Self: Sized, Self::Item: Copy + Eq + Hash { let mut counts = HashMap::new(); self.for_each(|item| *counts.entry(item).or_default() += 1 ); counts }
+  fn count_if(self, f: impl FnMut(&Self::Item) -> bool) -> usize where Self: Sized { self.filter(f).count() }
+  fn cumulate<Op: Fn(Self::Item, Self::Item) -> Self::Item, Inv: Fn(Self::Item) -> Self::Item>(self, init: Self::Item, op: Op, inv: Inv) -> Cumulated<Self::Item, Op, Inv> where Self: Sized, Self::Item: Copy {
+    Cumulated::new(self, init, op, inv)
+  }
+  fn cumsum(self) -> Cumulated<Self::Item, Box<dyn Fn(Self::Item, Self::Item) -> Self::Item>, Box<dyn Fn(Self::Item) -> Self::Item>> where Self: Sized, Self::Item: Copy + Num {
+    Cumulated::new(self, Self::Item::zero(), Box::new(|x, y| x + y), Box::new(|x| Self::Item::zero() - x))
+  }
 }
 impl<T: ?Sized> MyItertools for T where T: Iterator {}
 
@@ -57,3 +47,53 @@ pub trait MyOrd : PartialOrd + Sized {
   fn chmin(&mut self, mut rhs: Self) -> &mut Self { if self > &mut rhs { *self = rhs; }; self }
 }
 impl<T: Sized + PartialOrd> MyOrd for T {}
+
+pub trait MyRangeBounds<T: Copy>: RangeBounds<T> {
+  fn start_close(&self) -> Option<T>;
+  fn start_open(&self) -> Option<T>;
+  fn end_close(&self) -> Option<T>;
+  fn end_open(&self) -> Option<T>;
+
+  fn start_close_or(&self, default: T) -> T {
+    self.start_close().unwrap_or(default)
+  }
+  fn start_open_or(&self, default: T) -> T {
+    self.start_open().unwrap_or(default)
+  }
+  fn end_close_or(&self, default: T) -> T {
+    self.end_close().unwrap_or(default)
+  }
+  fn end_open_or(&self, default: T) -> T {
+    self.end_open().unwrap_or(default)
+  }
+}
+impl<T: PrimInt, R: RangeBounds<T>> MyRangeBounds<T> for R {
+  fn start_close(&self) -> Option<T> {
+    match self.start_bound() {
+      Included(&close) => Some(close),
+      Excluded(&open) => Some(open + T::one()),
+      Unbounded => None,
+    }
+  }
+  fn start_open(&self) -> Option<T> {
+    match self.start_bound() {
+      Included(&close) => Some(close - T::one()),
+      Excluded(&open) => Some(open),
+      Unbounded => None,
+    }
+  }
+  fn end_close(&self) -> Option<T> {
+    match self.end_bound() {
+      Included(&close) => Some(close),
+      Excluded(&open) => Some(open - T::one()),
+      Unbounded => None,
+    }
+  }
+  fn end_open(&self) -> Option<T> {
+    match self.end_bound() {
+      Included(&close) => Some(close + T::one()),
+      Excluded(&open) => Some(open),
+      Unbounded => None,
+    }
+  }
+}
