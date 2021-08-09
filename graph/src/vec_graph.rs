@@ -1,6 +1,7 @@
 use std::ops::{Deref};
 use std::collections::*;
 
+use template::*;
 use super::Graph;
 
 pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
@@ -54,10 +55,79 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
       dist[u] = Some(0);
     }
     while let Some(u) = queue.pop_front() {
+      let d1 = dist[u].unwrap();
       for e in &self[u] {
+        if dist[e.to()].is_none_or(|&d2| d2 > d1 + 1) {
+          dist[e.to()] = Some(d1 + 1);
+          queue.push_back(e.to());
+        }
       }
     }
     dist
+  }
+
+  fn bfs(&self, start: usize) -> Vec<Option<usize>> {
+    self.bfs_multistart(Some(start))
+  }
+
+  /// DFS をする
+  /// pre(頂点): 先行順
+  /// mid(頂点): 中間
+  /// post(頂点): 後行順
+  /// pre, mid, post をすべてするとオイラーツアーになる
+  fn dfs(&self, start: usize, f: impl FnMut(Whence, usize)) where Self: Sized {
+    //TODO: 非再帰にする
+    struct Dfs<F: FnMut(Whence, usize)> {
+      visited: Vec<bool>,
+      f: F
+    }
+    fn rec<E, Ed: Edge<E>>(graph: &impl VecGraph<E, Ed>, dfs: &mut Dfs<impl FnMut(Whence, usize)>, u: usize) {
+      dfs.visited[u] = true;
+      (dfs.f)(Whence::Pre, u);
+      let mut first = true;
+      for e in &graph[u] {
+        if dfs.visited[e.to()] {
+          continue;
+        }
+        if first {
+          first = false;
+        } else {
+          (dfs.f)(Whence::In, u);
+        }
+        rec(graph, dfs, e.to());
+      }
+      (dfs.f)(Whence::Post, u);
+    }
+    let mut dfs = Dfs { visited: vec![false; self.n()], f };
+    rec(self, &mut dfs, start);
+  }
+
+  fn dfs_preorder(&self, start: usize, mut f: impl FnMut(usize)) where Self: Sized {
+    self.dfs(start, |whence, u| {
+      match whence {
+        Whence::Pre => { (f)(u); }
+        _ => {}
+      }
+    });
+  }
+
+  fn dfs_postorder(&self, start: usize, mut f: impl FnMut(usize)) where Self: Sized {
+    self.dfs(start, |whence, u| {
+      match whence {
+        Whence::Post => { (f)(u); }
+        _ => {}
+      }
+    });
+  }
+
+  fn dfs_eulertour(&self, start: usize, mut f: impl FnMut(usize)) where Self: Sized {
+    let mut last = self.n();
+    self.dfs(start, |_, u| {
+      if last != u {
+        last = u;
+        (f)(u);
+      }
+    });
   }
 }
 
@@ -152,4 +222,10 @@ impl EdgeData<()> for (usize, usize) {
   fn weight(&self) -> &() {
     &()
   }
+}
+
+pub enum Whence {
+  Pre,
+  In,
+  Post,
 }
