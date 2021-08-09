@@ -1,5 +1,8 @@
 use num_traits::*;
 
+pub mod linear_sieve;
+pub use linear_sieve::*;
+
 pub trait Int: PrimInt {
   fn is<U: PrimInt>(self, other: U) -> bool {
     Self::from(other).map(|x| self == x).unwrap_or(false)

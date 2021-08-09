@@ -8,34 +8,29 @@ pub fn yesno(c: bool) { println!("{}", if c { "Yes" } else { "No" }); }
 pub fn yes() { yesno(true); }
 pub fn no() { yesno(false); }
 
-pub struct CompressCoords<T> {
-  coords: Vec<T>,
+pub struct CompressCoords<'a, T> {
+  coords: BTreeSet<T>,
+  cache: RefCell<Option<Vec<&'a T>>>,
 }
-impl<T: Ord> CompressCoords<T> {
+impl<'a, T: Clone + Ord> CompressCoords<'a, T> {
   pub fn new() -> Self {
-    Self { coords: Vec::new() }
-  }
-
-  pub fn append(&mut self, i: impl IntoIterator<Item = T>) {
-    let i = i.into_iter();
-    self.coords.reserve(i.size_hint().0);
-    for x in i {
-      self.coords.push(x);
-    }
-    self.coords.sort();
+    Self { coords: BTreeSet::new(), cache: RefCell::new(None) }
   }
 
   pub fn add(&mut self, x: T) {
-    self.coords.push(x);
-    self.coords.sort();
+    self.coords.insert(x);
+    *self.cache.borrow_mut() = None;
   }
 
-  pub fn index_of(&self, x: &T) -> Option<usize> {
-    self.coords.binary_search(x).ok()
+  pub fn index_of(&self, x: &T) -> Result<usize, usize> {
+    self.cache.borrow_mut()
+    .get_or_insert_with(|| self.coords.iter().cloned().collect())
+    .binary_search(x)
   }
 
   pub fn get(&self, x: &T) -> usize {
-    self.index_of(x).unwrap()
+    let r = self.index_of(x);
+    r.ok().or(r.err()).unwrap()
   }
 }
 
