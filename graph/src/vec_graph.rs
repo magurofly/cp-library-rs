@@ -1,4 +1,5 @@
 use std::ops::{Deref};
+use std::collections::*;
 
 use super::Graph;
 
@@ -26,7 +27,7 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
   fn dijkstra_by<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, mut cost: impl FnMut(&Ed, C) -> Option<C>) -> Vec<Option<C>> {
     let mut dists = vec![None; self.n()];
     dists[start] = Some(C::default());
-    let mut pq = std::collections::BinaryHeap::new();
+    let mut pq = BinaryHeap::new();
     pq.push((std::cmp::Reverse(C::default()), start));
     while let Some((std::cmp::Reverse(d1), u)) = pq.pop() {
       if dists[u].unwrap() != d1 { continue }
@@ -44,6 +45,19 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
 
   fn dijkstra(&self, start: usize) -> Vec<Option<E>> where E: Copy + std::ops::Add<Output = E> + Default + Ord {
     self.dijkstra_by(start, |edge, dist| Some(dist + *edge.weight()))
+  }
+
+  fn bfs_multistart(&self, start: impl IntoIterator<Item = usize>) -> Vec<Option<usize>> {
+    let mut queue = start.into_iter().collect::<VecDeque<_>>();
+    let mut dist = vec![None; self.n()];
+    for &u in &queue {
+      dist[u] = Some(0);
+    }
+    while let Some(u) = queue.pop_front() {
+      for e in &self[u] {
+      }
+    }
+    dist
   }
 }
 

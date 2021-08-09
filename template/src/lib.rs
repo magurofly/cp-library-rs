@@ -43,8 +43,8 @@ impl<T> MyIntoIter for T where T: IntoIterator {}
 pub trait MyOrd : PartialOrd + Sized {
   fn max(self, other: Self) -> Self { if &self < &other { other } else { self } }
   fn min(self, other: Self) -> Self { if &self > &other { other } else { self } }
-  fn chmax(&mut self, mut rhs: Self) -> &mut Self { if self < &mut rhs { *self = rhs; }; self }
-  fn chmin(&mut self, mut rhs: Self) -> &mut Self { if self > &mut rhs { *self = rhs; }; self }
+  fn chmax(&mut self, mut rhs: Self) -> bool { if self < &mut rhs { *self = rhs; true } else { false } }
+  fn chmin(&mut self, mut rhs: Self) -> bool { if self > &mut rhs { *self = rhs; true } else { false } }
 }
 impl<T: Sized + PartialOrd> MyOrd for T {}
 
@@ -96,4 +96,21 @@ impl<T: PrimInt, R: RangeBounds<T>> MyRangeBounds<T> for R {
       Unbounded => None,
     }
   }
+}
+
+pub trait MyOpt<T> : IntoIterator<Item = T> {
+  fn is_present(&self) -> bool;
+  fn pop(self) -> T;
+  fn get(&self) -> &T;
+  fn is_none_or(&self, f: impl FnOnce(&T) -> bool) -> bool {
+    !self.is_present() || (f)(self.get())
+  }
+  fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
+    self.is_present() && (f)(self.get())
+  }
+}
+impl<T> MyOpt<T> for Option<T> {
+  fn is_present(&self) -> bool { self.is_some() }
+  fn pop(self) -> T { Option::unwrap(self) }
+  fn get(&self) -> &T { self.as_ref().unwrap() }
 }
