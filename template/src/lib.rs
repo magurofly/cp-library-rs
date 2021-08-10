@@ -6,6 +6,9 @@ pub use compress_coords::*;
 pub mod cumulated;
 pub use cumulated::*;
 
+pub mod traits;
+pub use traits::*;
+
 use std::fmt;
 use std::hash::Hash;
 use std::ops::{RangeBounds, Bound::*};
