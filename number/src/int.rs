@@ -1,6 +1,10 @@
 use num_traits::*;
 
 pub trait Int: PrimInt {
+  fn cast<U: PrimInt>(self) -> U {
+    U::from(self).unwrap()
+  }
+
   fn is<U: PrimInt>(self, other: U) -> bool {
     Self::from(other).map(|x| self == x).unwrap_or(false)
   }
