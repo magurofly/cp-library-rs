@@ -25,23 +25,26 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
     }
   }
 
-  fn dijkstra_by<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, mut cost: impl FnMut(&Ed, C) -> Option<C>) -> Vec<Option<C>> {
+  fn dijkstra_by_with_heap<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, mut heap: impl Heap<(C, usize)>, mut cost: impl FnMut(&Ed, C) -> Option<C>) -> Vec<Option<C>> {
     let mut dists = vec![None; self.n()];
     dists[start] = Some(C::default());
-    let mut pq = BinaryHeap::new();
-    pq.push((std::cmp::Reverse(C::default()), start));
-    while let Some((std::cmp::Reverse(d1), u)) = pq.pop() {
+    heap.push((C::default(), start));
+    while let Some((d1, u)) = heap.pop() {
       if dists[u].unwrap() != d1 { continue }
       for e in &self[u] {
         if let Some(d2) = (cost)(e, d1) {
           if dists[e.to()].map(|d3| d3 > d2 ).unwrap_or(true) {
             dists[e.to()] = Some(d2);
-            pq.push((std::cmp::Reverse(d2), e.to()));
+            heap.push((d2, e.to()));
           }
         }
       }
     }
     dists
+  }
+
+  fn dijkstra_by<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, cost: impl FnMut(&Ed, C) -> Option<C>) -> Vec<Option<C>> {
+    self.dijkstra_by_with_heap(start, BinaryHeapReversed::new(), cost)
   }
 
   fn dijkstra(&self, start: usize) -> Vec<Option<E>> where E: Copy + std::ops::Add<Output = E> + Default + Ord {
@@ -128,6 +131,7 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
       }
     });
   }
+<<<<<<< HEAD
 }
 
 impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
@@ -140,6 +144,20 @@ impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
   }
 }
 
+=======
+}
+
+impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
+  fn n(&self) -> usize {
+    self.len()
+  }
+
+  fn m(&self) -> usize {
+    self.iter().map(|edges| edges.len()).sum()
+  }
+}
+
+>>>>>>> 96ef2874c04df8fa10b6578fdc706c1e9add2662
 impl<E> VecGraph<E, (usize, E)> for Vec<Vec<(usize, E)>> {
   fn each_edge_from(&self, from: usize, mut f: impl FnMut(&(usize, E))) {
     for edge in &self[from] {
