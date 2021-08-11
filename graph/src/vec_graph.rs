@@ -131,7 +131,6 @@ pub trait VecGraph<E, Ed: Edge<E>>: Graph<E> + Deref<Target = [Vec<Ed>]> {
       }
     });
   }
-<<<<<<< HEAD
 }
 
 impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
@@ -144,20 +143,6 @@ impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
   }
 }
 
-=======
-}
-
-impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
-  fn n(&self) -> usize {
-    self.len()
-  }
-
-  fn m(&self) -> usize {
-    self.iter().map(|edges| edges.len()).sum()
-  }
-}
-
->>>>>>> 96ef2874c04df8fa10b6578fdc706c1e9add2662
 impl<E> VecGraph<E, (usize, E)> for Vec<Vec<(usize, E)>> {
   fn each_edge_from(&self, from: usize, mut f: impl FnMut(&(usize, E))) {
     for edge in &self[from] {

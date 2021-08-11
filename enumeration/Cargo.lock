@@ -11,6 +11,7 @@ name = "enumeration"
 version = "0.1.0"
 dependencies = [
  "num-traits",
+ "number",
 ]
 
 [[package]]
@@ -20,4 +21,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c62be47e61d1842b9170f0fdeec8eba98e60e90e5446449a0545e5152acd7096"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "number"
+version = "0.1.0"
+dependencies = [
+ "num-traits",
 ]
