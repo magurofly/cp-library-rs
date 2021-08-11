@@ -1,5 +1,4 @@
 use num_traits::*;
-use std::cell::RefCell;
 
 pub struct LinearSieve {
   primes: Vec<usize>,
@@ -7,7 +6,7 @@ pub struct LinearSieve {
 }
 impl LinearSieve {
   pub fn new(n: impl PrimInt) -> Self {
-    let n: usize = n.into().unwrap();
+    let n: usize = cast(n);
     let mut primes = vec![];
     let mut lpf = vec![0; n + 1];
     lpf[0] = 1;
@@ -32,18 +31,18 @@ impl LinearSieve {
   }
 
   pub fn primes(&self) -> &[usize] {
-    &self.lpf
+    &self.primes
   }
 
   /// `n` の最小の素因数を返す
   pub fn lpf<T: PrimInt>(&self, n: T) -> T {
-    let n: usize = n.into().unwrap();
+    let n: usize = cast(n);
     assert!(n < self.lpf.len());
     T::from(self.lpf[n]).unwrap()
   }
 
   pub fn prime_division<T: PrimInt>(&self, n: T) -> Vec<T> {
-    let mut n: usize = n.into().unwrap();
+    let mut n: usize = cast(n);
     let mut divisors = vec![];
     while n > 1 {
       let d = self.lpf[n];
@@ -52,4 +51,8 @@ impl LinearSieve {
     }
     divisors
   }
+}
+
+fn cast<M: ToPrimitive, N: NumCast>(n: M) -> N {
+  N::from(n).unwrap()
 }
