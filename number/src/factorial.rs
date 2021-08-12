@@ -34,10 +34,10 @@ impl<N: Int> FactorialMod<N> {
     Self { fact }
   }
 }
-impl<N: Int> Index<N> for FactorialMod<N> {
+impl<I: Int, N: Int> Index<I> for FactorialMod<N> {
   type Output = N;
-  fn index(&self, idx: N) -> &N {
-    assert!(N::zero() <= idx && idx < self.fact.len().cast());
+  fn index(&self, idx: I) -> &N {
+    assert!(I::zero() <= idx && idx < self.fact.len().cast());
     &self.fact[idx.cast::<usize>()]
   }
 }

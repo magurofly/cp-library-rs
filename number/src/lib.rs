@@ -7,5 +7,8 @@ pub use linear_sieve::*;
 pub mod factorial;
 pub use factorial::*;
 
+pub mod inverse;
+pub use inverse::*;
+
 // pub mod modint;
 // pub use modint::*;
