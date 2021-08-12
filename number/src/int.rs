@@ -5,6 +5,10 @@ pub trait Int: PrimInt {
     U::from(self).unwrap()
   }
 
+  fn as_usize(self) -> usize {
+    self.cast()
+  }
+
   fn is<U: PrimInt>(self, other: U) -> bool {
     Self::from(other).map(|x| self == x).unwrap_or(false)
   }
@@ -31,6 +35,14 @@ pub trait Int: PrimInt {
 
   fn is_odd(self) -> bool {
     (self & Self::one()).is_one()
+  }
+
+  fn is_positive(self) -> bool {
+    self > Self::zero()
+  }
+
+  fn is_negative(self) -> bool {
+    self < Self::zero()
   }
 
   fn div_ceil(self, other: Self) -> Self {
@@ -282,6 +294,30 @@ pub trait Int: PrimInt {
         t = t + phi;
       }
       self.pow_mod(t, m)
+    }
+  }
+
+  fn times(self, mut f: impl FnMut(Self)) {
+    let mut i = Self::zero();
+    while i < self {
+      (f)(i);
+      i = i.add1();
+    }
+  }
+
+  fn upto(self, to: Self, mut f: impl FnMut(Self)) {
+    let mut i = self;
+    while i <= to {
+      (f)(i);
+      i = i.add1();
+    }
+  }
+
+  fn downto(self, to: Self, mut f: impl FnMut(Self)) {
+    let mut i = self;
+    while i >= to {
+      (f)(i);
+      i = i.sub1();
     }
   }
 }

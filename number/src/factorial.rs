@@ -70,12 +70,16 @@ impl<N: Int> FactorialInvMod<N> {
     Self { fact, inv, finv }
   }
 
-  pub fn fact(&self) -> &FactorialMod<N> {
-    &self.fact
+  pub fn fact(&self, n: impl Int) -> N {
+    self.fact[n]
   }
 
-  pub fn inv(&self) -> &InverseMod<N> {
-    &self.inv
+  pub fn inv(&self, n: impl Int) -> N {
+    self.inv[n]
+  }
+
+  pub fn fact_inv(&self, n: impl Int) -> N {
+    self[n]
   }
 }
 impl<I: Int, N: Int> Index<I> for FactorialInvMod<N> {
