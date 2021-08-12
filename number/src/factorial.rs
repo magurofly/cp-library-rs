@@ -53,3 +53,35 @@ pub fn factorials<N: Copy + Add<Output = N> + Mul<Output = N> + PartialOrd>(one:
   }
   fact
 }
+
+pub struct FactorialInvMod<N> {
+  fact: FactorialMod<N>,
+  inv: InverseMod<N>,
+  finv: Vec<N>,
+}
+impl<N: Int> FactorialInvMod<N> {
+  pub fn new(n: N, m: N) -> Self {
+    let fact = FactorialMod::new(n, m);
+    let inv = InverseMod::new(n, m);
+    let mut finv = vec![N::one()];
+    for i in 1 ..= n.cast::<usize>() {
+      finv.push(finv[i - 1] * inv[i] % m);
+    }
+    Self { fact, inv, finv }
+  }
+
+  pub fn fact(&self) -> &FactorialMod<N> {
+    &self.fact
+  }
+
+  pub fn inv(&self) -> &InverseMod<N> {
+    &self.inv
+  }
+}
+impl<I: Int, N: Int> Index<I> for FactorialInvMod<N> {
+  type Output = N;
+  fn index(&self, idx: I) -> &N {
+    assert!(I::zero() <= idx && idx < self.finv.len().cast());
+    &self.finv[idx.cast::<usize>()]
+  }
+}
