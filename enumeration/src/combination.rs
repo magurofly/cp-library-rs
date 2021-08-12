@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use num_traits::*;
 use number::*;
 
 pub struct Combination<T> {
