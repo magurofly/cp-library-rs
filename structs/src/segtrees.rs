@@ -209,28 +209,18 @@ pub trait LazySeg {
   /// 作用
   fn map(f: Self::F, x: Self::T, n: usize) -> Self::T;
 
-  // /// 作用の繰返し
-  // fn map_range(mut f: Self::F, mut n: usize) -> Self::F {
-  //   let mut r = Self::map_id();
-  //   while n != 0 {
-  //     if (n & 1) == 1 {
-  //       r = Self::map_compose(r.clone(), f.clone());
-  //     }
-  //     f = Self::map_compose(f.clone(), f.clone());
-  //     n >>= 1;
-  //   }
-  //   r
-  // }
-
   /// 作用の単位元
   fn map_id() -> Self::F;
 
+  /// 作用の合成
   fn map_compose(f: Self::F, g: Self::F) -> Self::F;
 
+  /// 長さ `n` の遅延セグメント木を作る
   fn new(n: usize) -> LazySegtree<LazySegHelper<Self>> where Self: Sized {
     LazySegtree::from(vec![(Self::op_id(), 1); n])
   }
 
+  /// `IntoIterator` から遅延セグメント木を作る
   fn from_iter(i: impl IntoIterator<Item = Self::T>) -> LazySegtree<LazySegHelper<Self>> where Self: Sized {
     LazySegtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
   }
@@ -336,11 +326,16 @@ impl<T: Copy + Add<Output = T> + Default + Ord + BoundedBelow> LazySeg for Range
 
 /// Range Add Range Sum 系の、演算と作用が同じときのセグ木
 pub trait RangeMonoid {
+  /// 値
   type T: Clone;
 
+  /// 演算
   fn op(x: Self::T, y: Self::T) -> Self::T;
+
+  /// 単位元
   fn id() -> Self::T;
 
+  /// 繰返し（範囲に作用させるときに使う）
   fn pow(mut x: Self::T, mut n: usize) -> Self::T {
     let mut r = Self::id();
     while n != 0 {
