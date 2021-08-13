@@ -20,25 +20,25 @@ impl<T, C> FPS<T, C> {
     }
   }
 
-  pub fn with_deg(deg: usize) -> Self where T: Default {
+  pub fn with_deg(deg: usize) -> Self where T: From<u8> {
     let mut a = Vec::with_capacity(deg + 1);
-    a.resize_with(deg + 1, T::default);
+    a.resize_with(deg + 1, || T::from(0u8));
     Self::from(a)
   }
 
-  pub fn resize(&mut self, n: usize) where T: Default {
-    self.a.resize_with(n, T::default);
+  pub fn resize(&mut self, n: usize) where T: From<u8> {
+    self.a.resize_with(n, || T::from(0u8));
   }
 
-  pub fn expand(&mut self, n: usize) where T: Default {
+  pub fn expand(&mut self, n: usize) where T: From<u8> {
     if self.a.len() < n {
       self.resize(n);
     }
   }
 
-  pub fn shrink(&mut self) where T: PartialEq + Default {
+  pub fn shrink(&mut self) where T: PartialEq + From<u8> {
     while let Some(x) = self.a.last() {
-      if x != &T::default() {
+      if x != &T::from(0u8) {
         break;
       }
       self.a.pop();
@@ -54,13 +54,18 @@ impl<T, C> FPS<T, C> {
   }
 
   /// `self[0]` must not be zero
-  pub fn inv(&self) -> FPS<T, C> where T: Clone + Default + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Default + Convolution<T> {
-    assert!(self.len() > 0 && self[0] != T::default());
-    let mut r = Self::with_deg(0);
-    r[0] = T::from(1) / self[0].clone();
+  pub fn inv(&self) -> FPS<T, C> where T: Clone + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T> {
+    assert!(self.len() > 0 && self[0] != T::from(0u8));
+    let mut r = Self::from(vec![T::from(1) / self[0].clone()]);
     let mut i = 1;
     while i < self.deg() {
-      r = (&(&(&(&r + &r) - &r) * &r) * &self.pre(i << 1)).pre(i << 1);
+      let mut f = r.clone();
+      f += &r;
+      let mut g = r.clone();
+      g *= &r;
+      g *= &self.pre(i << 1);
+      f -= &g;
+      r = f.pre(i << 1);
       i <<= 1;
     }
     r
@@ -100,7 +105,7 @@ impl<T, C> IndexMut<usize> for FPS<T, C> {
   }
 }
 
-impl<T: Clone + Default + AddAssign, C> AddAssign<&FPS<T, C>> for FPS<T, C> {
+impl<T: Clone + From<u8> + AddAssign, C> AddAssign<&FPS<T, C>> for FPS<T, C> {
   fn add_assign(&mut self, other: &Self) {
     self.expand(other.a.len());
     for i in 0 .. other.a.len() {
@@ -108,7 +113,7 @@ impl<T: Clone + Default + AddAssign, C> AddAssign<&FPS<T, C>> for FPS<T, C> {
     }
   }
 }
-impl<'a, T: Clone + Default + AddAssign, C: Clone + Default> Add<&'a FPS<T, C>> for &'a FPS<T, C> {
+impl<'a, T: Clone + From<u8> + AddAssign, C: Clone + From<u8>> Add<&'a FPS<T, C>> for &'a FPS<T, C> {
   type Output = FPS<T, C>;
 
   fn add(self, other: Self) -> FPS<T, C> {
@@ -118,7 +123,7 @@ impl<'a, T: Clone + Default + AddAssign, C: Clone + Default> Add<&'a FPS<T, C>> 
   }
 }
 
-impl<T: Clone + Default + SubAssign, C> SubAssign<&FPS<T, C>> for FPS<T, C> {
+impl<T: Clone + From<u8> + SubAssign, C> SubAssign<&FPS<T, C>> for FPS<T, C> {
   fn sub_assign(&mut self, other: &Self) {
     self.expand(other.a.len());
     for i in 0 .. other.a.len() {
@@ -126,7 +131,7 @@ impl<T: Clone + Default + SubAssign, C> SubAssign<&FPS<T, C>> for FPS<T, C> {
     }
   }
 }
-impl<'a, T: Clone + Default + SubAssign, C: Clone + Default> Sub<&'a FPS<T, C>> for &'a FPS<T, C> {
+impl<'a, T: Clone + From<u8> + SubAssign, C: Clone + From<u8>> Sub<&'a FPS<T, C>> for &'a FPS<T, C> {
   type Output = FPS<T, C>;
 
   fn sub(self, other: Self) -> FPS<T, C> {
@@ -158,7 +163,7 @@ impl<'a, T, C: Convolution<T>> Mul<&'a FPS<T, C>> for &'a FPS<T, C> {
     FPS::from(C::convolution(&self.a, &other.a))
   }
 }
-impl<T: Clone + Default, C: Convolution<T>> MulAssign<&FPS<T, C>> for FPS<T, C> {
+impl<T: Clone, C: Convolution<T>> MulAssign<&FPS<T, C>> for FPS<T, C> {
   fn mul_assign(&mut self, other: &Self) {
     self.a = C::convolution(&self.a, &other.a);
   }
@@ -185,10 +190,10 @@ impl<T, C> ShrAssign<usize> for FPS<T, C> {
   }
 }
 
-impl<T: Default, C> ShlAssign<usize> for FPS<T, C> {
+impl<T: From<u8>, C> ShlAssign<usize> for FPS<T, C> {
   fn shl_assign(&mut self, n: usize) {
     let mut a = Vec::with_capacity(n + self.a.len());
-    a.resize_with(n, T::default);
+    a.resize_with(n, || T::from(0u8));
     a.append(&mut self.a);
     self.a = a;
   }
