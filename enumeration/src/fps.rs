@@ -238,17 +238,36 @@ mod tests {
   #[test]
   fn test_inv() {
     use super::*;
-    // use acl_modint::*;
 
     fn inv(a: Vec<u32>) -> Vec<u32> {
       let deg = a.len();
-      let f = FPS998244353::from(a.into_iter().map(ModInt998244353::from).collect::<Vec<_>>());
+      let f = FPS998244353::from(cast_vec(a));
       let mut g = f.inv();
       g.resize(deg);
       let b: Vec<_> = g.into();
-      b.into_iter().map(|x| x.val()).collect::<Vec<_>>()
+      flat_vec(b)
     }
 
     assert_eq!(inv(vec![5, 4, 3, 2, 1]), vec![598946612, 718735934, 862483121, 635682004, 163871793]);
+  }
+
+  #[test]
+  fn test_convolution_mod1000000007() {
+    use super::*;
+
+    fn conv(a: Vec<u32>, b: Vec<u32>) -> Vec<u32> {
+      flat_vec(<StaticModIntConvolution<Mod1000000007>>::convolution(&cast_vec(a), &cast_vec(b)))
+    }
+
+    assert_eq!(conv(vec![1, 2, 3, 4], vec![5, 6, 7, 8, 9]), vec![5, 16, 34, 60, 70, 70, 59, 36]);
+    assert_eq!(conv(vec![10000000], vec![10000000]), vec![999300007]);
+  }
+
+  fn cast_vec<T, U: From<T>>(a: Vec<T>) -> Vec<U> {
+    a.into_iter().map(U::from).collect::<Vec<_>>()
+  }
+
+  fn flat_vec<M: acl_modint::ModIntBase>(a: Vec<M>) -> Vec<u32> {
+    a.into_iter().map(M::val).collect::<Vec<_>>()
   }
 }
