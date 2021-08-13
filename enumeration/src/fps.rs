@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::{Add, AddAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign}};
+use std::{marker::PhantomData, ops::*};
 
 use acl_modint::*;
 use acl_convolution::*;
@@ -26,17 +26,17 @@ impl<T, C> FPS<T, C> {
     Self::from(a)
   }
 
-  fn resize(&mut self, n: usize) where T: Default {
+  pub fn resize(&mut self, n: usize) where T: Default {
     self.a.resize_with(n, T::default);
   }
 
-  fn expand(&mut self, n: usize) where T: Default {
+  pub fn expand(&mut self, n: usize) where T: Default {
     if self.a.len() < n {
       self.resize(n);
     }
   }
 
-  fn shrink(&mut self) where T: PartialEq + Default {
+  pub fn shrink(&mut self) where T: PartialEq + Default {
     while let Some(x) = self.a.last() {
       if x != &T::default() {
         break;
@@ -45,8 +45,36 @@ impl<T, C> FPS<T, C> {
     }
   }
 
-  fn deg(&self) -> usize {
-    self.a.len().saturating_sub(1)
+  pub fn deg(&self) -> usize {
+    self.len().saturating_sub(1)
+  }
+
+  pub fn pre(&self, n: usize) -> Self where T: Clone {
+    Self::from(self.a[0 .. self.len().min(n)].to_vec())
+  }
+
+  /// `self[0]` must not be zero
+  pub fn inv(&self) -> FPS<T, C> where T: Clone + Default + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Default + Convolution<T> {
+    assert!(self.len() > 0 && self[0] != T::default());
+    let mut r = Self::with_deg(0);
+    r[0] = T::from(1) / self[0].clone();
+    let mut i = 1;
+    while i < self.deg() {
+      r = (&(&(&(&r + &r) - &r) * &r) * &self.pre(i << 1)).pre(i << 1);
+      i <<= 1;
+    }
+    r
+  }
+}
+impl<T, C> Deref for FPS<T, C> {
+  type Target = Vec<T>;
+  fn deref(&self) -> &Vec<T> {
+    &self.a
+  }
+}
+impl<T, C> DerefMut for FPS<T, C> {
+  fn deref_mut(&mut self) -> &mut Vec<T> {
+    &mut self.a
   }
 }
 impl<T, C> From<Vec<T>> for FPS<T, C> {
@@ -133,6 +161,36 @@ impl<'a, T, C: Convolution<T>> Mul<&'a FPS<T, C>> for &'a FPS<T, C> {
 impl<T: Clone + Default, C: Convolution<T>> MulAssign<&FPS<T, C>> for FPS<T, C> {
   fn mul_assign(&mut self, other: &Self) {
     self.a = C::convolution(&self.a, &other.a);
+  }
+}
+
+impl<T: Clone + DivAssign, C> DivAssign<T> for FPS<T, C> {
+  fn div_assign(&mut self, other: T) {
+    for i in 0 .. self.a.len() {
+      self[i] /= other.clone();
+    }
+  }
+}
+impl<T: Clone + Div<Output = T>, C> Div<T> for &FPS<T, C> {
+  type Output = FPS<T, C>;
+
+  fn div(self, other: T) -> FPS<T, C> {
+    FPS::from(self.a.iter().map(|x| x.clone() / other.clone()).collect::<Vec<_>>())
+  }
+}
+
+impl<T, C> ShrAssign<usize> for FPS<T, C> {
+  fn shr_assign(&mut self, n: usize) {
+    self.a = self.a.split_off(n);
+  }
+}
+
+impl<T: Default, C> ShlAssign<usize> for FPS<T, C> {
+  fn shl_assign(&mut self, n: usize) {
+    let mut a = Vec::with_capacity(n + self.a.len());
+    a.resize_with(n, T::default);
+    a.append(&mut self.a);
+    self.a = a;
   }
 }
 
