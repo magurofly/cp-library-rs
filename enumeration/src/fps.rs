@@ -3,9 +3,9 @@ use std::{marker::PhantomData, ops::*};
 use acl_modint::*;
 use acl_convolution::*;
 
-pub type FPSStaticModInt<M> = FPS<StaticModInt<M>, StaticModIntConvolution<M>>;
+pub type FPSStaticModInt<M> = FPS<StaticModInt<M>, ConvolutionStatic<M>>;
 pub type FPS998244353 = FPSStaticModInt<Mod998244353>;
-pub type FPSDynamicModInt<I> = FPS<DynamicModInt<I>, DynamicModIntConvolution<I>>;
+pub type FPSDynamicModInt<I> = FPS<DynamicModInt<I>, ConvolutionDynamic<I>>;
 
 #[derive(Debug, Clone)]
 pub struct FPS<T, C> {
@@ -209,8 +209,8 @@ pub trait Convolution<T> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct StaticModIntConvolution<M>(PhantomData<M>);
-impl<M: Modulus> Convolution<StaticModInt<M>> for StaticModIntConvolution<M> {
+pub struct ConvolutionStatic<M>(PhantomData<M>);
+impl<M: Modulus> Convolution<StaticModInt<M>> for ConvolutionStatic<M> {
   fn convolution(a: &[StaticModInt<M>], b: &[StaticModInt<M>]) -> Vec<StaticModInt<M>> {
     if M::HINT_VALUE_IS_PRIME && (M::VALUE - 1).trailing_zeros() >= 20 {
       convolution(a, b)
@@ -223,8 +223,8 @@ impl<M: Modulus> Convolution<StaticModInt<M>> for StaticModIntConvolution<M> {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct DynamicModIntConvolution<I>(PhantomData<I>);
-impl<I: Id> Convolution<DynamicModInt<I>> for DynamicModIntConvolution<I> {
+pub struct ConvolutionDynamic<I>(PhantomData<I>);
+impl<I: Id> Convolution<DynamicModInt<I>> for ConvolutionDynamic<I> {
   fn convolution(a: &[DynamicModInt<I>], b: &[DynamicModInt<I>]) -> Vec<DynamicModInt<I>> {
     let a = a.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
     let b = b.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
@@ -256,7 +256,7 @@ mod tests {
     use super::*;
 
     fn conv(a: Vec<u32>, b: Vec<u32>) -> Vec<u32> {
-      flat_vec(<StaticModIntConvolution<Mod1000000007>>::convolution(&cast_vec(a), &cast_vec(b)))
+      flat_vec(<ConvolutionStatic<Mod1000000007>>::convolution(&cast_vec(a), &cast_vec(b)))
     }
 
     assert_eq!(conv(vec![1, 2, 3, 4], vec![5, 6, 7, 8, 9]), vec![5, 16, 34, 60, 70, 70, 59, 36]);
