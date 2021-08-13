@@ -21,8 +21,8 @@ impl<T, C> FPS<T, C> {
   }
 
   pub fn with_deg(deg: usize) -> Self where T: From<u8> {
-    let mut a = Vec::with_capacity(deg + 1);
-    a.resize_with(deg + 1, || T::from(0u8));
+    let mut a = Vec::with_capacity(deg);
+    a.resize_with(deg, || T::from(0u8));
     Self::from(a)
   }
 
@@ -46,19 +46,19 @@ impl<T, C> FPS<T, C> {
   }
 
   pub fn deg(&self) -> usize {
-    self.len().saturating_sub(1)
+    self.len()
   }
 
-  pub fn pre(&self, n: usize) -> Self where T: Clone {
-    Self::from(self.a[0 .. self.len().min(n)].to_vec())
+  pub fn pre(&self, deg: usize) -> Self where T: Clone {
+    Self::from(self.a[0 .. self.len().min(deg)].to_vec())
   }
 
   /// `self[0]` must not be zero
-  pub fn inv(&self) -> FPS<T, C> where T: Clone + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T> {
+  pub fn inv_deg(&self, deg: usize) -> FPS<T, C> where T: Clone + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T> {
     assert!(self.len() > 0 && self[0] != T::from(0u8));
     let mut r = Self::from(vec![T::from(1) / self[0].clone()]);
     let mut i = 1;
-    while i < self.deg() {
+    while i < deg {
       let mut f = r.clone();
       f += &r;
       let mut g = r.clone();
@@ -69,6 +69,11 @@ impl<T, C> FPS<T, C> {
       i <<= 1;
     }
     r
+  }
+
+  /// `self[0]` mut not be zero
+  pub fn inv(&self) -> FPS<T, C> where T: Clone + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T> {
+    self.inv_deg(self.deg())
   }
 }
 impl<T, C> Deref for FPS<T, C> {
@@ -207,7 +212,13 @@ pub trait Convolution<T> {
 pub struct StaticModIntConvolution<M>(PhantomData<M>);
 impl<M: Modulus> Convolution<StaticModInt<M>> for StaticModIntConvolution<M> {
   fn convolution(a: &[StaticModInt<M>], b: &[StaticModInt<M>]) -> Vec<StaticModInt<M>> {
-    convolution(a, b)
+    if M::HINT_VALUE_IS_PRIME && (M::VALUE - 1).trailing_zeros() >= 20 {
+      convolution(a, b)
+    } else {
+      let a = a.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
+      let b = b.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
+      convolution_i64(&a, &b).into_iter().map(|x| (x % <StaticModInt<M>>::modulus() as i64).into()).collect::<Vec<_>>()
+    }
   }
 }
 
@@ -219,5 +230,25 @@ impl<I: Id> Convolution<DynamicModInt<I>> for DynamicModIntConvolution<I> {
     let b = b.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
     let c = convolution_i64(&a, &b).into_iter().map(|x| (x % <DynamicModInt<I>>::modulus() as i64).into()).collect::<Vec<_>>();
     c
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  #[test]
+  fn test_inv() {
+    use super::*;
+    // use acl_modint::*;
+
+    fn inv(a: Vec<u32>) -> Vec<u32> {
+      let deg = a.len();
+      let f = FPS998244353::from(a.into_iter().map(ModInt998244353::from).collect::<Vec<_>>());
+      let mut g = f.inv();
+      g.resize(deg);
+      let b: Vec<_> = g.into();
+      b.into_iter().map(|x| x.val()).collect::<Vec<_>>()
+    }
+
+    assert_eq!(inv(vec![5, 4, 3, 2, 1]), vec![598946612, 718735934, 862483121, 635682004, 163871793]);
   }
 }
