@@ -8,3 +8,5 @@ license = "CC0-1.0"
 [dependencies]
 num-traits = "=0.2.11"
 number = { path = "../number" }
+acl_convolution = { package = "ac-library-rs-parted-convolution", path = "../../ac/ac-library-rs-parted-convolution" }
+acl_modint = { package = "ac-library-rs-parted-modint", path = "../../ac/ac-library-rs-parted-modint" }

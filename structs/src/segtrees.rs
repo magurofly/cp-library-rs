@@ -16,12 +16,34 @@
 //!     0
 //!   }
 //!   
-//!   fn map(f: i64, x: i64) -> i64 {
+//!   fn map(f: i64, x: i64, _n: usize) -> i64 {
 //!     f + x
 //!   }
 //!   
-//!   fn map_repeat(f: i64, n: usize) -> i64 {
-//!     f * (n as i64)
+//!   fn map_compose(f: i64, g: i64) -> i64 {
+//!     f + g
+//!   }
+//!   
+//!   fn map_id() -> i64 {
+//!     0
+//!   }
+//! }
+//!
+//! struct RangeAddRangeSum;
+//! impl LazySeg for RangeAddRangeSum {
+//!   type T = i64; // 値
+//!   type F = i64; // 作用
+//!
+//!   fn op(x: i64, y: i64) -> i64 {
+//!     x + y
+//!   }
+//!
+//!   fn op_id() -> i64 {
+//!     0
+//!   }
+//!   
+//!   fn map(f: i64, x: i64, n: usize) -> i64 {
+//!     f * (n as i64) + x
 //!   }
 //!   
 //!   fn map_compose(f: i64, g: i64) -> i64 {
@@ -41,7 +63,9 @@
 use acl_segtree::*;
 use acl_lazysegtree::*;
 use acl_traits::*;
+use std::convert::TryFrom;
 use std::marker::PhantomData;
+use std::ops::{Add, Mul};
 use super::*;
 
 macro_rules! impl_prepared {
@@ -57,10 +81,10 @@ macro_rules! impl_prepared {
 }
 
 // Range Sum
-impl_prepared!(S, [S: Copy + std::ops::Add<Output = S> + Zero], Additive<S>, range_sum, range_sum_from);
+impl_prepared!(S, [S: Copy + Add<Output = S> + Zero], Additive<S>, range_sum, range_sum_from);
 
 // Range Multiple
-impl_prepared!(S, [S: Copy + std::ops::Mul<Output = S> + One], Multiplicative<S>, range_mul, range_mul_from);
+impl_prepared!(S, [S: Copy + Mul<Output = S> + One], Multiplicative<S>, range_mul, range_mul_from);
 
 // Range Min
 impl_prepared!(S, [S: Copy + Ord + BoundedAbove], Min<S>, range_min, range_min_from);
@@ -183,30 +207,20 @@ pub trait LazySeg {
   fn op_id() -> Self::T;
 
   /// 作用
-  fn map(f: Self::F, x: Self::T) -> Self::T;
-
-  /// 作用の繰返し
-  fn map_repeat(mut f: Self::F, mut n: usize) -> Self::F {
-    let mut r = Self::map_id();
-    while n != 0 {
-      if (n & 1) == 1 {
-        r = Self::map_compose(r.clone(), f.clone());
-      }
-      f = Self::map_compose(f.clone(), f.clone());
-      n >>= 1;
-    }
-    r
-  }
+  fn map(f: Self::F, x: Self::T, n: usize) -> Self::T;
 
   /// 作用の単位元
   fn map_id() -> Self::F;
 
+  /// 作用の合成
   fn map_compose(f: Self::F, g: Self::F) -> Self::F;
 
+  /// 長さ `n` の遅延セグメント木を作る
   fn new(n: usize) -> LazySegtree<LazySegHelper<Self>> where Self: Sized {
     LazySegtree::from(vec![(Self::op_id(), 1); n])
   }
 
+  /// `IntoIterator` から遅延セグメント木を作る
   fn from_iter(i: impl IntoIterator<Item = Self::T>) -> LazySegtree<LazySegHelper<Self>> where Self: Sized {
     LazySegtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
   }
@@ -233,10 +247,128 @@ impl<L: LazySeg> MapMonoid for LazySegHelper<L> {
   }
 
   fn mapping(f: &L::F, (x, n): &(L::T, usize)) -> (L::T, usize) {
-    (L::map(L::map_repeat(f.clone(), *n), x.clone()), *n)
+    (L::map(f.clone(), x.clone(), *n), *n)
   }
 
   fn composition(f: &L::F, g: &L::F) -> L::F {
     L::map_compose(f.clone(), g.clone())
+  }
+}
+
+pub struct RangeAddRangeSum<T>(PhantomData<T>);
+impl<T: Copy + Add<Output = T> + Mul<Output = T> + TryFrom<usize> + Default> RangeMonoid for RangeAddRangeSum<T> where <T as TryFrom<usize>>::Error: std::fmt::Debug {
+  type T = T;
+
+  fn op(x: T, y: T) -> T {
+    x + y
+  }
+
+  fn id() -> T {
+    T::default()
+  }
+
+  fn pow(x: T, n: usize) -> T {
+    x * T::try_from(n).unwrap()
+  }
+}
+
+pub struct RangeAddRangeMin<T>(PhantomData<T>);
+impl<T: Copy + Add<Output = T> + Default + Ord + BoundedAbove> LazySeg for RangeAddRangeMin<T> {
+  type T = T;
+  type F = T;
+
+  fn op(x: T, y: T) -> T {
+    x.min(y)
+  }
+
+  fn op_id() -> T {
+    T::max_value()
+  }
+
+  fn map(f: T, x: T, _n: usize) -> T {
+    f + x
+  }
+
+  fn map_id() -> T {
+    T::default()
+  }
+
+  fn map_compose(f: T, g: T) -> T {
+    f + g
+  }
+}
+
+pub struct RangeAddRangeMax<T>(PhantomData<T>);
+impl<T: Copy + Add<Output = T> + Default + Ord + BoundedBelow> LazySeg for RangeAddRangeMax<T> {
+  type T = T;
+  type F = T;
+
+  fn op(x: T, y: T) -> T {
+    x.max(y)
+  }
+
+  fn op_id() -> T {
+    T::min_value()
+  }
+
+  fn map(f: T, x: T, _n: usize) -> T {
+    f + x
+  }
+
+  fn map_id() -> T {
+    T::default()
+  }
+
+  fn map_compose(f: T, g: T) -> T {
+    f + g
+  }
+}
+
+/// Range Add Range Sum 系の、演算と作用が同じときのセグ木
+pub trait RangeMonoid {
+  /// 値
+  type T: Clone;
+
+  /// 演算
+  fn op(x: Self::T, y: Self::T) -> Self::T;
+
+  /// 単位元
+  fn id() -> Self::T;
+
+  /// 繰返し（範囲に作用させるときに使う）
+  fn pow(mut x: Self::T, mut n: usize) -> Self::T {
+    let mut r = Self::id();
+    while n != 0 {
+      if (n & 1) != 0 {
+        r = Self::op(r.clone(), x.clone());
+      }
+      x = Self::op(x.clone(), x.clone());
+      n >>= 1;
+    }
+    r
+  }
+}
+impl<M: RangeMonoid> LazySeg for M {
+  type T = M::T;
+  type F = M::T;
+
+  fn op(x: Self::T, y: Self::T) -> Self::T {
+    <M as RangeMonoid>::op(x, y)
+  }
+
+  fn op_id() -> Self::T {
+    M::id()
+  }
+
+  fn map(f: Self::F, x: Self::T, n: usize) -> Self::T {
+    <M as RangeMonoid>::op(M::pow(f, n), x)
+  }
+
+  fn map_id() -> Self::F {
+    M::id()
+  }
+
+  fn map_compose(f: Self::F, g: Self::F) -> Self::F {
+    <M as RangeMonoid>::op(f, g)
   }
 }
