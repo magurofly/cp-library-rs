@@ -2,6 +2,7 @@ use std::ops::Index;
 
 use super::*;
 
+#[derive(Debug, Clone)]
 pub struct InverseMod<N> {
   inv: Vec<N>,
 }

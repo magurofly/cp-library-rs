@@ -54,6 +54,7 @@ pub fn factorials<N: Copy + Add<Output = N> + Mul<Output = N> + PartialOrd>(one:
   fact
 }
 
+#[derive(Debug, Clone)]
 pub struct FactorialInvMod<N> {
   fact: FactorialMod<N>,
   inv: InverseMod<N>,
@@ -87,5 +88,37 @@ impl<I: Int, N: Int> Index<I> for FactorialInvMod<N> {
   fn index(&self, idx: I) -> &N {
     assert!(I::zero() <= idx && idx < self.finv.len().cast());
     &self.finv[idx.cast::<usize>()]
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use super::{factorial, FactorialInvMod, FactorialMod};
+
+  #[test]
+  fn test_factorial() {
+    assert_eq!(factorial(0), 1);
+    assert_eq!(factorial(1), 1);
+    assert_eq!(factorial(2), 2);
+    assert_eq!(factorial(6), 720);
+  }
+
+  #[test]
+  fn test_factorial_mod() {
+    let f = FactorialMod::new(10, 17);
+    for i in 0 ..= 10 {
+      assert_eq!(f[i], factorial(i) % 17);
+    }
+  }
+
+  #[test]
+  fn test_factorial_inv_mod() {
+    let f = FactorialInvMod::new(10, 17);
+    eprintln!("finv = {:?}", &f);
+    for i in 0 ..= 10 {
+      assert_eq!(factorial(i) % 17, f.fact(i));
+      assert_eq!(factorial(i) % 17 * f.fact_inv(i) % 17, 1);
+      assert_eq!(f.fact_inv(i) * f.fact(i) % 17, 1);
+    }
   }
 }
