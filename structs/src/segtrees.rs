@@ -16,12 +16,34 @@
 //!     0
 //!   }
 //!   
-//!   fn map(f: i64, x: i64) -> i64 {
+//!   fn map(f: i64, x: i64, _n: usize) -> i64 {
 //!     f + x
 //!   }
 //!   
-//!   fn map_repeat(f: i64, n: usize) -> i64 {
-//!     f * (n as i64)
+//!   fn map_compose(f: i64, g: i64) -> i64 {
+//!     f + g
+//!   }
+//!   
+//!   fn map_id() -> i64 {
+//!     0
+//!   }
+//! }
+//!
+//! struct RangeAddRangeSum;
+//! impl LazySeg for RangeAddRangeSum {
+//!   type T = i64; // 値
+//!   type F = i64; // 作用
+//!
+//!   fn op(x: i64, y: i64) -> i64 {
+//!     x + y
+//!   }
+//!
+//!   fn op_id() -> i64 {
+//!     0
+//!   }
+//!   
+//!   fn map(f: i64, x: i64, n: usize) -> i64 {
+//!     f * (n as i64) + x
 //!   }
 //!   
 //!   fn map_compose(f: i64, g: i64) -> i64 {
@@ -183,20 +205,20 @@ pub trait LazySeg {
   fn op_id() -> Self::T;
 
   /// 作用
-  fn map(f: Self::F, x: Self::T) -> Self::T;
+  fn map(f: Self::F, x: Self::T, n: usize) -> Self::T;
 
-  /// 作用の繰返し
-  fn map_repeat(mut f: Self::F, mut n: usize) -> Self::F {
-    let mut r = Self::map_id();
-    while n != 0 {
-      if (n & 1) == 1 {
-        r = Self::map_compose(r.clone(), f.clone());
-      }
-      f = Self::map_compose(f.clone(), f.clone());
-      n >>= 1;
-    }
-    r
-  }
+  // /// 作用の繰返し
+  // fn map_range(mut f: Self::F, mut n: usize) -> Self::F {
+  //   let mut r = Self::map_id();
+  //   while n != 0 {
+  //     if (n & 1) == 1 {
+  //       r = Self::map_compose(r.clone(), f.clone());
+  //     }
+  //     f = Self::map_compose(f.clone(), f.clone());
+  //     n >>= 1;
+  //   }
+  //   r
+  // }
 
   /// 作用の単位元
   fn map_id() -> Self::F;
@@ -233,7 +255,7 @@ impl<L: LazySeg> MapMonoid for LazySegHelper<L> {
   }
 
   fn mapping(f: &L::F, (x, n): &(L::T, usize)) -> (L::T, usize) {
-    (L::map(L::map_repeat(f.clone(), *n), x.clone()), *n)
+    (L::map(f.clone(), x.clone(), *n), *n)
   }
 
   fn composition(f: &L::F, g: &L::F) -> L::F {
