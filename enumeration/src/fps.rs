@@ -55,8 +55,8 @@ impl<T, C> FPS<T, C> {
 
   /// `self[0]` must not be zero
   pub fn inv_deg(&self, deg: usize) -> FPS<T, C> where T: Clone + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T> {
-    assert!(self.len() > 0 && self[0] != T::from(0u8));
-    let mut r = Self::from(vec![T::from(1) / self[0].clone()]);
+    assert!(self.len() > 0 && self.a[0] != T::from(0u8));
+    let mut r = Self::from(vec![T::from(1) / self.a[0].clone()]);
     let mut i = 1;
     while i < deg {
       let mut f = r.clone();
@@ -104,8 +104,9 @@ impl<T, C> Index<usize> for FPS<T, C> {
     &self.a[idx]
   }
 }
-impl<T, C> IndexMut<usize> for FPS<T, C> {
+impl<T: From<u8>, C> IndexMut<usize> for FPS<T, C> {
   fn index_mut(&mut self, idx: usize) -> &mut T {
+    self.expand(idx + 1);
     &mut self.a[idx]
   }
 }
@@ -114,7 +115,7 @@ impl<T: Clone + From<u8> + AddAssign, C> AddAssign<&FPS<T, C>> for FPS<T, C> {
   fn add_assign(&mut self, other: &Self) {
     self.expand(other.a.len());
     for i in 0 .. other.a.len() {
-      self[i] += other[i].clone();
+      self.a[i] += other[i].clone();
     }
   }
 }
@@ -132,7 +133,7 @@ impl<T: Clone + From<u8> + SubAssign, C> SubAssign<&FPS<T, C>> for FPS<T, C> {
   fn sub_assign(&mut self, other: &Self) {
     self.expand(other.a.len());
     for i in 0 .. other.a.len() {
-      self[i] -= other[i].clone();
+      self.a[i] -= other[i].clone();
     }
   }
 }
@@ -149,7 +150,7 @@ impl<'a, T: Clone + From<u8> + SubAssign, C: Clone + From<u8>> Sub<&'a FPS<T, C>
 impl<T: Clone + MulAssign, C> MulAssign<T> for FPS<T, C> {
   fn mul_assign(&mut self, other: T) {
     for i in 0 .. self.a.len() {
-      self[i] *= other.clone();
+      self.a[i] *= other.clone();
     }
   }
 }
@@ -177,7 +178,7 @@ impl<T: Clone, C: Convolution<T>> MulAssign<&FPS<T, C>> for FPS<T, C> {
 impl<T: Clone + DivAssign, C> DivAssign<T> for FPS<T, C> {
   fn div_assign(&mut self, other: T) {
     for i in 0 .. self.a.len() {
-      self[i] /= other.clone();
+      self.a[i] /= other.clone();
     }
   }
 }

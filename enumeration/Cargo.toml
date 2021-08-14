@@ -6,6 +6,8 @@ name = "enumeration"
 version = "0.1.0"
 [dependencies]
 num-traits = "=0.2.11"
+num-complex = "=0.2.4"
+num-integer = "=0.1.42"
 
 [dependencies.acl_convolution]
 package = "ac-library-rs-parted-convolution"
