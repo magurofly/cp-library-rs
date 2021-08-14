@@ -9,3 +9,6 @@ pub use fps::*;
 
 pub mod fft;
 pub use fft::*;
+
+pub mod bernoulli;
+pub use bernoulli::*;
