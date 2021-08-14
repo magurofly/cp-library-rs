@@ -19,3 +19,6 @@ path = "../../ac/ac-library-rs-parted-modint"
 
 [dependencies.number]
 path = "../number"
+
+[dev-dependencies]
+rustfft = "6.0.1"

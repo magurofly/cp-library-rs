@@ -1,7 +1,7 @@
 use num_traits::*;
 
 pub trait Int: PrimInt {
-  fn cast<U: PrimInt>(self) -> U {
+  fn cast<U: NumCast>(self) -> U {
     U::from(self).unwrap()
   }
 
