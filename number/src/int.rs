@@ -1,13 +1,7 @@
 use num_traits::*;
 
 pub trait Int: PrimInt {
-<<<<<<< HEAD
-  fn cast<U: Int>(self) -> U {
-    U::from(self).unwrap()
-  }
-
-=======
-  fn cast<U: PrimInt>(self) -> U {
+  fn cast<U: NumCast>(self) -> U {
     U::from(self).unwrap()
   }
 
@@ -15,7 +9,6 @@ pub trait Int: PrimInt {
     self.cast()
   }
 
->>>>>>> parted/main
   fn is<U: PrimInt>(self, other: U) -> bool {
     Self::from(other).map(|x| self == x).unwrap_or(false)
   }
@@ -44,8 +37,6 @@ pub trait Int: PrimInt {
     (self & Self::one()).is_one()
   }
 
-<<<<<<< HEAD
-=======
   fn is_positive(self) -> bool {
     self > Self::zero()
   }
@@ -54,7 +45,6 @@ pub trait Int: PrimInt {
     self < Self::zero()
   }
 
->>>>>>> parted/main
   fn div_ceil(self, other: Self) -> Self {
     (self + other - Self::one()) / other
   }
@@ -306,8 +296,6 @@ pub trait Int: PrimInt {
       self.pow_mod(t, m)
     }
   }
-<<<<<<< HEAD
-=======
 
   fn times(self, mut f: impl FnMut(Self)) {
     let mut i = Self::zero();
@@ -332,7 +320,6 @@ pub trait Int: PrimInt {
       i = i.sub1();
     }
   }
->>>>>>> parted/main
 }
 
 impl<T: PrimInt> Int for T {}

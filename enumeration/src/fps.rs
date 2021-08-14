@@ -1,7 +1,7 @@
 use std::{marker::PhantomData, ops::*};
+use super::*;
 
 use acl_modint::*;
-use acl_convolution::*;
 
 pub type FPSStaticModInt<M> = FPS<StaticModInt<M>, ConvolutionStatic<M>>;
 pub type FPS998244353 = FPSStaticModInt<Mod998244353>;
@@ -205,35 +205,6 @@ impl<T: From<u8>, C> ShlAssign<usize> for FPS<T, C> {
   }
 }
 
-pub trait Convolution<T> {
-  fn convolution(a: &[T], b: &[T]) -> Vec<T>;
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ConvolutionStatic<M>(PhantomData<M>);
-impl<M: Modulus> Convolution<StaticModInt<M>> for ConvolutionStatic<M> {
-  fn convolution(a: &[StaticModInt<M>], b: &[StaticModInt<M>]) -> Vec<StaticModInt<M>> {
-    if M::HINT_VALUE_IS_PRIME && (M::VALUE - 1).trailing_zeros() >= 20 {
-      convolution(a, b)
-    } else {
-      let a = a.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
-      let b = b.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
-      convolution_i64(&a, &b).into_iter().map(|x| (x % <StaticModInt<M>>::modulus() as i64).into()).collect::<Vec<_>>()
-    }
-  }
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct ConvolutionDynamic<I>(PhantomData<I>);
-impl<I: Id> Convolution<DynamicModInt<I>> for ConvolutionDynamic<I> {
-  fn convolution(a: &[DynamicModInt<I>], b: &[DynamicModInt<I>]) -> Vec<DynamicModInt<I>> {
-    let a = a.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
-    let b = b.iter().map(|x| x.val() as i64).collect::<Vec<_>>();
-    let c = convolution_i64(&a, &b).into_iter().map(|x| (x % <DynamicModInt<I>>::modulus() as i64).into()).collect::<Vec<_>>();
-    c
-  }
-}
-
 #[cfg(test)]
 mod tests {
   #[test]
@@ -250,18 +221,6 @@ mod tests {
     }
 
     assert_eq!(inv(vec![5, 4, 3, 2, 1]), vec![598946612, 718735934, 862483121, 635682004, 163871793]);
-  }
-
-  #[test]
-  fn test_convolution_mod1000000007() {
-    use super::*;
-
-    fn conv(a: Vec<u32>, b: Vec<u32>) -> Vec<u32> {
-      flat_vec(<ConvolutionStatic<Mod1000000007>>::convolution(&cast_vec(a), &cast_vec(b)))
-    }
-
-    assert_eq!(conv(vec![1, 2, 3, 4], vec![5, 6, 7, 8, 9]), vec![5, 16, 34, 60, 70, 70, 59, 36]);
-    assert_eq!(conv(vec![10000000], vec![10000000]), vec![999300007]);
   }
 
   fn cast_vec<T, U: From<T>>(a: Vec<T>) -> Vec<U> {
