@@ -45,6 +45,7 @@ pub trait MyIntoIter : IntoIterator where Self: Sized {
   fn implode(self, sep: &str) -> String where Self::Item: fmt::Display { self.into_iter().map(|x| format!("{}", x)).to_vec().join(sep) }
   fn with_index(self) -> Map<Enumerate<Self::IntoIter>, Box<dyn FnMut((usize, Self::Item)) -> (Self::Item, usize)>> { self.into_iter().enumerate().map(Box::new(|(i, x)| (x, i))) }
   fn it(&self) -> Self::IntoIter where Self: Clone { self.clone().into_iter() }
+  fn clone_iter<'a, T: 'a + Clone>(self) -> Cloned<Self::IntoIter> where Self: IntoIterator<Item = &'a T> { self.into_iter().cloned() }
 }
 impl<T> MyIntoIter for T where T: IntoIterator {}
 
