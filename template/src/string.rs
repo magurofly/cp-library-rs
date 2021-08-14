@@ -28,6 +28,32 @@ pub trait ToS {
   impl_to!(to_u128, u128);
   impl_to!(to_f32, f32);
   impl_to!(to_f64, f64);
+
+  fn pad_start(&self, len: usize, pad: &str) -> String {
+    let mut s = self.to_s();
+    let add_len = len - s.len();
+    for _ in 0 .. add_len / pad.len() {
+      s += pad;
+    }
+    s += &pad[0 .. add_len % pad.len()];
+    s
+  }
+
+  fn pad_end(&self, len: usize, pad: &str) -> String {
+    let s = self.to_s();
+    let mut t = String::new();
+    let add_len = len - s.len();
+    for _ in 0 .. add_len / pad.len() {
+      t += pad;
+    }
+    t += &pad[0 .. add_len % pad.len()];
+    t += &s;
+    t
+  }
+
+  fn concat(&self, other: &impl ToS) -> String {
+    self.to_s() + &other.to_s()
+  }
 }
 
 macro_rules! impl_from {

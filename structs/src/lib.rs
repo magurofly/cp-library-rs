@@ -6,3 +6,6 @@ pub use radix_heap::*;
 
 pub mod segtrees;
 pub use segtrees::*;
+
+pub mod indexed_ord;
+pub use indexed_ord::*;
