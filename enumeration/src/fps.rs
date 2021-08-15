@@ -3,9 +3,9 @@ use super::*;
 
 use acl_modint::*;
 
-pub type FPSStaticModInt<M> = FPS<StaticModInt<M>, ConvolutionStatic<M>>;
-pub type FPS998244353 = FPSStaticModInt<Mod998244353>;
-pub type FPSDynamicModInt<I> = FPS<DynamicModInt<I>, ConvolutionDynamic<I>>;
+pub type FPSStatic<M> = FPS<StaticModInt<M>, ConvolutionStatic<M>>;
+pub type FPS998244353 = FPSStatic<Mod998244353>;
+pub type FPSDynamic<I> = FPS<DynamicModInt<I>, ConvolutionDynamic<I>>;
 
 #[derive(Debug, Clone)]
 pub struct FPS<T, C> {

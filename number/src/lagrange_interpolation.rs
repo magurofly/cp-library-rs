@@ -1,6 +1,23 @@
 use super::*;
 use acl_modint::*;
 
+// pub fn lagrange_interpolation<M: ModIntBase>(x: &[M], y: &[M], t: M) -> M {
+//   let k = x.len() - 1;
+//   let mut ret = M::from(0);
+//   for i in 0 ..= k {
+//     let mut m = M::from(1);
+//     let mut d = M::from(1);
+//     for j in 0 ..= k {
+//       if i != j {
+//         m *= t - x[j];
+//         d *= x[i] - x[j];
+//       }
+//     }
+//     ret += y[i] * m / d;
+//   }
+//   ret
+// }
+
 pub fn lagrange_polynomial<N: ModIntBase>(y: &[N], t: N) -> N {
   let deg = y.len() - 1;
   let f = FactorialInvMod::new(deg as i64, N::modulus() as i64);
@@ -30,7 +47,6 @@ pub fn lagrange_polynomial<N: ModIntBase>(y: &[N], t: N) -> N {
 #[cfg(test)]
 pub mod test {
   use super::*;
-  use acl_modint::*;
   
   fn m(n: u32) -> ModInt1000000007 {
     ModInt1000000007::from(n)
