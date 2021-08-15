@@ -1,30 +1,43 @@
 use super::*;
+use acl_modint::*;
 
-pub fn lagrange_interpolation_mod<N: Int>(y: &[N], x: N, m: N) -> N {
-  let n = y.len() - 1;
-  if x <= n.cast() {
-    return y[x.as_usize()] % m;
+pub fn lagrange_polynomial<N: ModIntBase>(y: &[N], t: N) -> N {
+  let deg = y.len() - 1;
+  let f = FactorialInvMod::new(deg as i64, N::modulus() as i64);
+  if t.val() as usize <= deg {
+    return y[t.val() as usize];
   }
-  let fact = FactorialInvMod::new(n.cast::<N>(), m);
-
-  let mut dp = vec![N::one(); n + 1];
-  let mut pd = vec![N::one(); n + 1];
-  for i in 0 .. n {
-    dp[i + 1] = dp[i] * (x - i.cast()) % m;
+  let mut ret = N::from(0);
+  let mut dp = vec![N::from(1); deg + 1];
+  let mut pd = vec![N::from(1); deg + 1];
+  for i in 0 .. deg {
+    dp[i + 1] = dp[i] * (t - N::from(i));
   }
-  for i in (1 ..= n).rev() {
-    pd[i - 1] = pd[i] * (x - i.cast()) % m;
+  for i in (1 .. deg).rev() {
+    pd[i - 1] = pd[i] * (t - N::from(i));
   }
-  let mut ret = N::zero();
-  for i in 0 ..= n {
-    let t = y[i] * dp[i] % m * pd[i] % m * fact.fact_inv(i) % m * fact.fact_inv(n - i) % m;
-    if (n - i).is_odd() {
-      ret = ret - t;
+  for i in 0 ..= deg {
+    let tmp = y[i] * dp[i] * pd[i] * N::from(f.fact_inv(i)) * N::from(f.fact_inv(deg - i));
+    if (deg - i).is_even() {
+      ret -= tmp;
     } else {
-      ret = ret + t;
+      ret += tmp;
     }
-    ret = ret % m;
+  }
+  ret
+}
+
+#[cfg(test)]
+pub mod test {
+  use super::*;
+  use acl_modint::*;
+  
+  fn m(n: u32) -> ModInt1000000007 {
+    ModInt1000000007::from(n)
   }
 
-  ret
+  #[test]
+  fn test_polynomial() {
+    // assert_eq!(lagrange_polynomial(&[m(1), m(3), m(7)], m(3)), m(13))
+  }
 }

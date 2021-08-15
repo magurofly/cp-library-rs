@@ -14,7 +14,7 @@ pub use traits::*;
 
 use std::fmt;
 use std::hash::Hash;
-use std::ops::{Bound::*, Deref, RangeBounds};
+use std::ops::{Bound::*, RangeBounds};
 use std::collections::*;
 use std::iter::*;
 

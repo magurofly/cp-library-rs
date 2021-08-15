@@ -34,7 +34,7 @@ pub trait Int: PrimInt {
   }
 
   fn is_odd(self) -> bool {
-    (self & Self::one()).is_one()
+    !self.is_even()
   }
 
   fn is_positive(self) -> bool {

@@ -1,62 +1,129 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, marker::PhantomData};
 use number::*;
+use acl_modint::*;
 
-pub struct Combination<T> {
-  m: T,
-  f: RefCell<Vec<(T, T, T)>>,
+pub struct CombinationMod<N> {
+  f: RefCell<FactorialInvMod<N>>,
+  modulus: N,
+}
+impl<N: Int> CombinationMod<N> {
+  pub fn new(modulus: N) -> Self {
+    Self {
+      f: RefCell::new(FactorialInvMod::empty(modulus)),
+      modulus,
+    }
+  }
+
+  pub fn modulus(&self) -> N {
+    self.modulus
+  }
+
+  pub fn ensure(&self, n: impl Int) {
+    self.f.borrow_mut().ensure(n.as_usize());
+  }
+
+  /// 階乗
+  pub fn fact(&self, n: impl Int) -> N {
+    self.ensure(n);
+    self.f.borrow().fact(n)
+  }
+
+  /// 逆数
+  pub fn inv(&self, n: impl Int) -> N {
+    self.ensure(n);
+    self.f.borrow().inv(n)
+  }
+
+  /// 階乗の逆数
+  pub fn fact_inv(&self, n: impl Int) -> N {
+    self.ensure(n);
+    self.f.borrow().fact_inv(n)
+  }
+
+  /// 順列
+  pub fn perm<M: Int>(&self, n: M, r: M) -> N {
+    if r.is_negative() || n < r {
+      return N::zero();
+    }
+
+    self.ensure(n);
+
+    self.fact(n) * self.fact_inv(n - r) % self.modulus
+  }
+
+  /// 二項係数（組合せ）
+  pub fn binom<M: Int>(&self, n: M, r: M) -> N {
+    if n < r {
+      return N::zero();
+    }
+
+    if n.is_negative() {
+      // 負の二項係数
+      return if r.is_even() {
+        self.homo(M::zero() - n, r)
+      } else {
+        N::zero() - self.homo(M::zero() - n, r)
+      };
+    }
+
+    self.perm(n, r) * self.fact_inv(r) % self.modulus()
+  }
+
+  /// 重複組合せ
+  pub fn homo<M: Int>(&self, n: M, r: M) -> N {
+    if n.is_negative() || r.is_negative() {
+      return N::zero();
+    }
+
+    if r.is_zero() {
+      return N::one();
+    }
+
+    self.binom(n + r - M::one(), r)
+  }
 }
 
-impl<T: Int> Combination<T> {
-  pub fn new(m: T) -> Self {
-    Self { m, f: RefCell::new(vec![]) }
+pub struct Combination<T> {
+  f: CombinationMod<i64>,
+  phantom: PhantomData<T>,
+}
+
+impl<T: ModIntBase> Combination<T> {
+  pub fn new() -> Self {
+    Self { f: CombinationMod::new(T::modulus() as i64), phantom: PhantomData, }
   }
 
-  fn check(&self, n: T) -> usize {
-    let n: usize = n.cast();
-    let m: usize = self.m.cast();
-    let l = self.f.borrow().len();
-    if l > n {
-      return n;
-    }
-    let mut f = self.f.borrow_mut();
-    let mut l2 = l;
-    while l2 <= n {
-      l2 <<= 1;
-    }
-    f.reserve(l2 - l);
-    for i in l ..= l2 {
-      let j = i.cast();
-      let inv = self.m - f[m % i].0 * (m.cast::<T>() / j) % self.m;
-      let fac = f[i - 1].1 * j % self.m;
-      let fin = f[i - 1].2 * inv % self.m;
-      f.push((inv, fac, fin));
-    }
-    n
+  pub fn inner(&self) -> &CombinationMod<i64> {
+    &self.f
   }
 
-  pub fn inv(&self, n: T) -> T {
-    let n = self.check(n);
-    self.f.borrow()[n].0
+  /// 階乗
+  pub fn fact(&self, n: impl Int) -> T {
+    T::from(self.f.fact(n))
   }
 
-  pub fn fact(&self, n: T) -> T {
-    let n = self.check(n);
-    self.f.borrow()[n].1
+  /// 逆数
+  pub fn inv(&self, n: impl Int) -> T {
+    T::from(self.f.inv(n))
   }
 
-  pub fn fact_inv(&self, n: T) -> T {
-    let n = self.check(n);
-    self.f.borrow()[n].2
+  /// 階乗の逆数
+  pub fn fact_inv(&self, n: impl Int) -> T {
+    T::from(self.f.fact_inv(n))
   }
 
-  pub fn perm(&self, n: T, k: T) -> T {
-    self.fact(n) * self.fact_inv(k) % self.m
+  /// 順列
+  pub fn perm<U: Int>(&self, n: U, r: U) -> T {
+    T::from(self.f.perm(n, r))
   }
 
-  pub fn comb(&self, n: T, k: T) -> T {
-    if n < T::zero() || k > n || k < T::zero() {
-      return T::zero();
-    }
-    self.perm(n, k) * self.fact_inv(n - k) % self.m
+  /// 二項係数（組合せ）
+  pub fn binom<U: Int>(&self, n: U, r: U) -> T {
+    T::from(self.f.binom(n, r))
+  }
+
+  /// 重複組合せ
+  pub fn homo<U: Int>(&self, n: U, r: U) -> T {
+    T::from(self.f.homo(n, r))
   }
 }
