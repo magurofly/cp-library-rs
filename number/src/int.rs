@@ -37,8 +37,6 @@ pub trait Int: PrimInt {
     !self.is_even()
   }
 
-<<<<<<< HEAD
-=======
   fn is_positive(self) -> bool {
     self > Self::zero()
   }
@@ -47,7 +45,6 @@ pub trait Int: PrimInt {
     self < Self::zero()
   }
 
->>>>>>> parted/main
   fn div_ceil(self, other: Self) -> Self {
     (self + other - Self::one()) / other
   }
@@ -299,8 +296,6 @@ pub trait Int: PrimInt {
       self.pow_mod(t, m)
     }
   }
-<<<<<<< HEAD
-=======
 
   fn times(self, mut f: impl FnMut(Self)) {
     let mut i = Self::zero();
@@ -325,7 +320,6 @@ pub trait Int: PrimInt {
       i = i.sub1();
     }
   }
->>>>>>> parted/main
 }
 
 impl<T: PrimInt> Int for T {}
