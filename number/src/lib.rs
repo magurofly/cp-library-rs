@@ -12,9 +12,3 @@ pub use factorial::*;
 
 pub mod inverse;
 pub use inverse::*;
-
-pub mod lagrange_interpolation;
-pub use lagrange_interpolation::*;
-
-// pub mod modint;
-// pub use modint::*;
