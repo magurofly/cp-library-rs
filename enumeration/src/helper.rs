@@ -1,4 +1,4 @@
-use std::{cell::RefCell, marker::PhantomData};
+use std::{cell::RefCell, marker::PhantomData, rc::Rc};
 use number::*;
 use super::*;
 use acl_modint::*;
@@ -162,14 +162,15 @@ impl<N: Int> EnumerationMod<N> {
   }
 }
 
+#[derive(Clone)]
 pub struct Enumeration<T> {
-  f: EnumerationMod<i64>,
+  f: Rc<EnumerationMod<i64>>,
   phantom: PhantomData<T>,
 }
 
 impl<T: ModIntBase> Enumeration<T> {
   pub fn new() -> Self {
-    Self { f: EnumerationMod::new(T::modulus() as i64), phantom: PhantomData, }
+    Self { f: Rc::new(EnumerationMod::new(T::modulus() as i64)), phantom: PhantomData, }
   }
 
   pub fn inner(&self) -> &EnumerationMod<i64> {
@@ -219,6 +220,11 @@ impl<T: ModIntBase> Enumeration<T> {
   /// 第二種スターリング数
   pub fn stirling2(&self, n: impl Int, k: impl Int) -> T {
     T::from(self.f.stirling2(n, k))
+  }
+
+  /// ラグランジュ補間 O(|y| + log mod)
+  pub fn interpolation(&self, y: &[T], t: T) -> T {
+    lagrange::lagrange_polynomial(self, y, t)
   }
 }
 

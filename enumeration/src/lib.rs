@@ -21,3 +21,5 @@ pub use partition::*;
 
 pub mod stirling;
 pub use stirling::*;
+
+pub mod lagrange;
