@@ -46,11 +46,11 @@ pub fn lagrange_polynomial<N: ModIntBase>(y: &[N], t: N) -> N {
 
 #[cfg(test)]
 pub mod test {
-  use super::*;
+  // use super::*;
   
-  fn m(n: u32) -> ModInt1000000007 {
-    ModInt1000000007::from(n)
-  }
+  // fn m(n: u32) -> ModInt1000000007 {
+  //   ModInt1000000007::from(n)
+  // }
 
   #[test]
   fn test_polynomial() {

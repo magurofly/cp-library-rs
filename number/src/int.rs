@@ -1,28 +1,17 @@
 use num_traits::*;
+use super::*;
 
-pub trait Int: PrimInt {
+pub trait Int: PrimInt + IntLike {
   fn cast<U: NumCast>(self) -> U {
     U::from(self).unwrap()
   }
 
-  fn as_usize(self) -> usize {
-    self.cast()
-  }
-
   fn is<U: PrimInt>(self, other: U) -> bool {
-    Self::from(other).map(|x| self == x).unwrap_or(false)
+    self.cast::<U>() == other
   }
 
   fn at(self, idx: usize) -> bool {
     (self >> idx & Self::one()).is_one()
-  }
-
-  fn add1(self) -> Self {
-    self + Self::one()
-  }
-
-  fn sub1(self) -> Self {
-    self - Self::one()
   }
 
   fn bit_len(self) -> usize {
@@ -322,4 +311,4 @@ pub trait Int: PrimInt {
   }
 }
 
-impl<T: PrimInt> Int for T {}
+impl<T: PrimInt + IntLike> Int for T {}
