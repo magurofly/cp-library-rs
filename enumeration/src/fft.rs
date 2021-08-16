@@ -112,7 +112,7 @@ pub mod test {
   }
 
   fn is_near(x: &[Complex<f64>], y: &[Complex<f64>]) -> bool {
-    x.into_iter().zip(y).all(|(z, w)| (z - w).norm() <= f64::EPSILON)
+    x.into_iter().zip(y).all(|(z, w)| (z - w).norm() <= 1e-6)
   }
 
   fn rustfft(x: &[f64]) -> Vec<Complex<f64>> {
