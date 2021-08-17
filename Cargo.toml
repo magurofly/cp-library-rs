@@ -16,3 +16,5 @@ number = { path = "number" }
 structs = { path = "structs" }
 template = { path = "template" }
 unionfind = { path = "unionfind" }
+fps = { path = "fps" }
+fft = { path = "fft" }

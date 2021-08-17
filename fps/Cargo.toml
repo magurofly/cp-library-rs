@@ -1,0 +1,19 @@
+[package]
+authors = ["magurofly <fishfishfish@hash.fyi>"]
+edition = "2018"
+license = "CC0-1.0"
+name = "fps"
+version = "0.1.0"
+[dependencies]
+num-traits = "=0.2.11"
+num-complex = "=0.2.4"
+num-integer = "=0.1.42"
+fft = { path = "../fft" }
+number = { path = "../number" }
+
+[dependencies.acl_modint]
+package = "ac-library-rs-parted-modint"
+path = "../../ac/ac-library-rs-parted-modint"
+
+[dev-dependencies]
+rustfft = "6.0.1"
