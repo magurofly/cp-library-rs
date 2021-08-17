@@ -3,7 +3,7 @@ use fft::*;
 use number::*;
 use std::ops::*;
 
-impl<T: Clone + PartialEq + From<u8> + AddAssign + SubAssign + Mul<Output = T> + MulAssign + Div<Output = T>, C: Clone + Convolution<T>> FPS<T, C> {
+impl<T: Clone + PartialEq + From<u8> + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T>> FPS<T, C> {
   pub fn sqrt_at(&self, deg: usize) -> Self {
     let n = self.deg();
     if self[0] == T::from(0) {

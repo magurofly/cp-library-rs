@@ -2,10 +2,12 @@ use super::*;
 use std::ops::*;
 use fft::*;
 
-impl<T: Clone + From<u8> + From<usize> + AddAssign + SubAssign + Mul<Output = T> + Div<Output = T> + PartialEq, C: Clone + Convolution<T>> FPS<T, C> {
+impl<T: Clone + From<u8> + From<usize> + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T> + PartialEq, C: Clone + Convolution<T>> FPS<T, C> {
   pub fn log_at(&self, deg: usize) -> Self {
     assert!(self[0] == T::from(1u8));
-    (&self.diff() * &self.inv_at(deg)).pre(deg - 1).integral()
+    let mut f = &self.diff() * &self.inv_at(deg);
+    f.truncate(deg - 1);
+    f.integral()
   }
 
   pub fn log(&self) -> Self {
@@ -21,7 +23,8 @@ impl<T: Clone + From<u8> + From<usize> + AddAssign + SubAssign + Mul<Output = T>
       ret.truncate(i << 1);
       i <<= 1;
     }
-    ret.pre(deg)
+    ret.truncate(deg);
+    ret
   }
 
   pub fn exp(&self) -> Self {

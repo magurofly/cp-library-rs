@@ -23,7 +23,7 @@ impl<T, C> FPS<T, C> {
     Self::from(slice.into_iter().map(|x| x.clone().into()).collect::<Vec<T>>())
   }
 
-  pub fn convolve(&mut self, other: &Self) where C: Convolution<T> {
+  pub fn convolve(&mut self, other: &FPS<T, C>) where C: Convolution<T> {
     self.a = C::convolution(&self.a, &other.a);
   }
 
@@ -164,12 +164,4 @@ impl<T: PartialEq + From<u8>, C> PartialEq for FPS<T, C> {
 
 #[cfg(test)]
 mod tests {
-  #[test]
-  fn test_inv() {
-    use super::*;
-
-    type F = FPS998244353;
-
-    assert_eq!(F::from_slice(&[5, 4, 3, 2, 1]).inv(), F::from_slice(&[598946612, 718735934, 862483121, 635682004, 163871793]));
-  }
 }
