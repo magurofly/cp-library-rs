@@ -8,3 +8,4 @@ pub mod arith;
 pub mod inv;
 pub mod calc;
 pub mod explog;
+pub mod sqrt;

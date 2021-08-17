@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::*};
+use std::{marker::PhantomData, ops::*, cmp::*};
 use fft::*;
 use acl_modint::*;
 
@@ -6,7 +6,7 @@ pub type FPSStatic<M> = FPS<StaticModInt<M>, ConvolutionStatic<M>>;
 pub type FPS998244353 = FPSStatic<Mod998244353>;
 pub type FPSDynamic<I> = FPS<DynamicModInt<I>, ConvolutionDynamic<I>>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct FPS<T, C> {
   convolution: PhantomData<C>,
   a: Vec<T>,
@@ -17,6 +17,10 @@ impl<T, C> FPS<T, C> {
       convolution: PhantomData,
       a: vec![],
     }
+  }
+
+  pub fn from_slice<U: Clone + Into<T>>(slice: &[U]) -> Self {
+    Self::from(slice.into_iter().map(|x| x.clone().into()).collect::<Vec<T>>())
   }
 
   pub fn convolve(&mut self, other: &Self) where C: Convolution<T> {
@@ -113,6 +117,16 @@ impl<T, C> ShrAssign<usize> for FPS<T, C> {
   }
 }
 
+impl<T: Clone, C: Clone> Shr<usize> for &FPS<T, C> {
+  type Output = FPS<T, C>;
+
+  fn shr(self, n: usize) -> FPS<T, C> {
+    let mut f = self.clone();
+    f >>= n;
+    f
+  }
+}
+
 impl<T: From<u8>, C> ShlAssign<usize> for FPS<T, C> {
   fn shl_assign(&mut self, n: usize) {
     let mut a = Vec::with_capacity(n + self.a.len());
@@ -122,29 +136,40 @@ impl<T: From<u8>, C> ShlAssign<usize> for FPS<T, C> {
   }
 }
 
+impl<T: Clone + From<u8>, C: Clone> Shl<usize> for &FPS<T, C> {
+  type Output = FPS<T, C>;
+
+  fn shl(self, n: usize) -> FPS<T, C> {
+    let mut f = self.clone();
+    f <<= n;
+    f
+  }
+}
+
+impl<T: std::fmt::Debug, C> std::fmt::Debug for FPS<T, C> {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    let terms = self.iter().enumerate().map(|(n, x)| format!("{:?} x^{}", x, n)).collect::<Vec<_>>();
+    terms.join(" + ").fmt(f)
+  }
+}
+
+impl<T: PartialEq + From<u8>, C> PartialEq for FPS<T, C> {
+  fn eq(&self, other: &Self) -> bool {
+    let n = self.deg().min(other.deg());
+    (0 .. n).all(|i| self[i] == other[i])
+    && (n .. self.deg()).all(|i| self[i] == T::from(0))
+    && (n .. other.deg()).all(|i| other[i] == T::from(0)) 
+  }
+}
+
 #[cfg(test)]
 mod tests {
   #[test]
   fn test_inv() {
     use super::*;
 
-    fn inv(a: Vec<u32>) -> Vec<u32> {
-      let deg = a.len();
-      let f = FPS998244353::from(cast_vec(a));
-      let mut g = f.inv();
-      g.resize(deg);
-      let b: Vec<_> = g.into();
-      flat_vec(b)
-    }
+    type F = FPS998244353;
 
-    assert_eq!(inv(vec![5, 4, 3, 2, 1]), vec![598946612, 718735934, 862483121, 635682004, 163871793]);
-  }
-
-  fn cast_vec<T, U: From<T>>(a: Vec<T>) -> Vec<U> {
-    a.into_iter().map(U::from).collect::<Vec<_>>()
-  }
-
-  fn flat_vec<M: acl_modint::ModIntBase>(a: Vec<M>) -> Vec<u32> {
-    a.into_iter().map(M::val).collect::<Vec<_>>()
+    assert_eq!(F::from_slice(&[5, 4, 3, 2, 1]).inv(), F::from_slice(&[598946612, 718735934, 862483121, 635682004, 163871793]));
   }
 }
