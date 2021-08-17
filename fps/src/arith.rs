@@ -8,8 +8,7 @@ macro_rules! derive_op {
     // FPS ?= X
     impl<$T, $C> $trait_assign<$Rhs> for $Self where $($cond)* {
       fn $op_assign(&mut self, other: $Rhs) {
-        // <$Self as $trait_assign<&'a $Rhs>>::$op_assign(self, &other);
-        self.$op_assign(other);
+        self.$op_assign(&other);
       }
     }
 
@@ -17,7 +16,7 @@ macro_rules! derive_op {
     impl<$T, $C> $trait<&$Rhs> for &$Self where $($cond)* {
       type Output = $Self;
       fn $op(self, other: &$Rhs) -> $Self {
-        let mut f = self.clone();//<$Self>::clone(&self);
+        let mut f: $Self = self.clone();
         f.$op_assign(other);
         f
       }
@@ -54,7 +53,7 @@ macro_rules! derive_op {
 }
 
 // Addition
-impl<'a, T: Clone + From<u8> + Add<Output = T>, C: 'a> AddAssign<&'a FPS<T, C>> for FPS<T, C> {
+impl<T: Clone + From<u8> + Add<Output = T>, C> AddAssign<&FPS<T, C>> for FPS<T, C> {
   fn add_assign(&mut self, other: &FPS<T, C>) {
     self.expand(other.len());
     for i in 0 .. other.len() {
