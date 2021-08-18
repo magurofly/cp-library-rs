@@ -30,9 +30,6 @@ pub mod test {
   
   #[test]
   fn test_inv() {
-    let f = F::from_slice(&[5, 4, 3, 2, 1]);
-    println!("deg is {}", f.deg());
-    let g = f.inv();
-    assert_eq!(g, F::from_slice(&[598946612, 718735934, 862483121, 635682004, 163871793]));
+    assert_eq!(F::from_slice(&[5, 4, 3, 2, 1]).inv(), F::from_slice(&[598946612, 718735934, 862483121, 635682004, 163871793]));
   }
 }

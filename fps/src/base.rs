@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::*, cmp::*};
+use std::{cmp::*, marker::PhantomData, ops::*};
 use fft::*;
 use acl_modint::*;
 
@@ -148,8 +148,11 @@ impl<T: Clone + From<u8>, C: Clone> Shl<usize> for &FPS<T, C> {
 
 impl<T: std::fmt::Debug, C> std::fmt::Debug for FPS<T, C> {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let terms = self.iter().enumerate().map(|(n, x)| format!("{:?} x^{}", x, n)).collect::<Vec<_>>();
-    terms.join(" + ").fmt(f)
+    f.write_str("FPS[")?;
+    let terms = self.iter().enumerate().map(|(n, x)| format!("{:?} x{}", x, n)).collect::<Vec<_>>();
+    f.write_str(&terms.join(" + "))?;
+    f.write_str("]")?;
+    Ok(())
   }
 }
 
