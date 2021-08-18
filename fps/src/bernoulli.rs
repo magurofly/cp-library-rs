@@ -6,6 +6,7 @@ use fft::*;
 pub fn bernoulli<T: ModIntBase, C: Clone + Convolution<T>>(n: usize) -> Vec<T> {
   let mut x = FPS::<T, C>::with_deg(n + 1);
   let f = FactorialInvMod::new((n + 1) as i64, T::modulus() as i64);
+  //TODO: replace with thread-local Enumeration struct
   for i in 0 ..= n {
     x[i] = T::from(f.fact_inv(i + 1));
   }
