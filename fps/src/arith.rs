@@ -3,17 +3,17 @@ use std::ops::*;
 use fft::*;
 
 macro_rules! derive_op {
-  ($Self:ty, $Rhs:ty, $trait:ident, $op:ident, $trait_assign:ident, $op_assign:ident, $T:ident, $C:ident, [$($cond:tt)*]) => {
+  ($Self:ty, $Rhs:ty, [$($trait:tt)*], $op:ident, [$($trait_assign:tt)*], $op_assign:ident, $T:ident, $C:ident, [$($cond:tt)*]) => {
 
     // FPS ?= X
-    impl<$T, $C> $trait_assign<$Rhs> for $Self where $($cond)* {
+    impl<$T, $C> $($trait_assign)*<$Rhs> for $Self where $($cond)* {
       fn $op_assign(&mut self, other: $Rhs) {
         self.$op_assign(&other);
       }
     }
 
     // &FPS ? &X
-    impl<$T, $C> $trait<&$Rhs> for &$Self where $($cond)* {
+    impl<$T, $C> $($trait)*<&$Rhs> for &$Self where $($cond)* {
       type Output = $Self;
       fn $op(self, other: &$Rhs) -> $Self {
         let mut f: $Self = self.clone();
@@ -23,7 +23,7 @@ macro_rules! derive_op {
     }
 
     // &FPS ? X
-    impl<$T, $C> $trait<$Rhs> for &$Self where $($cond)* {
+    impl<$T, $C> $($trait)*<$Rhs> for &$Self where $($cond)* {
       type Output = $Self;
       fn $op(self, other: $Rhs) -> $Self {
         let mut f = self.clone();
@@ -33,7 +33,7 @@ macro_rules! derive_op {
     }
 
     // FPS ? &X
-    impl<$T, $C> $trait<&$Rhs> for $Self where $($cond)* {
+    impl<$T, $C> $($trait)*<&$Rhs> for $Self where $($cond)* {
       type Output = $Self;
       fn $op(mut self, other: &$Rhs) -> $Self {
         self.$op_assign(other);
@@ -42,7 +42,7 @@ macro_rules! derive_op {
     }
 
     // FPS ? X
-    impl<$T, $C> $trait<$Rhs> for $Self where $($cond)* {
+    impl<$T, $C> $($trait)*<$Rhs> for $Self where $($cond)* {
       type Output = $Self;
       fn $op(mut self, other: $Rhs) -> $Self {
         self.$op_assign(&other);
@@ -53,7 +53,7 @@ macro_rules! derive_op {
 }
 
 // Addition
-impl<T: Clone + From<u8> + Add<Output = T>, C> AddAssign<&FPS<T, C>> for FPS<T, C> {
+impl<T: Clone + From<u8> + std::ops::Add<Output = T>, C> std::ops::AddAssign<&FPS<T, C>> for FPS<T, C> {
   fn add_assign(&mut self, other: &FPS<T, C>) {
     self.expand(other.len());
     for i in 0 .. other.len() {
@@ -63,14 +63,14 @@ impl<T: Clone + From<u8> + Add<Output = T>, C> AddAssign<&FPS<T, C>> for FPS<T, 
 }
 
 // Scalar Addition
-impl<T: Clone + Add<Output = T>, C> AddAssign<&T> for FPS<T, C> {
+impl<T: Clone + std::ops::Add<Output = T>, C> std::ops::AddAssign<&T> for FPS<T, C> {
   fn add_assign(&mut self, other: &T) {
     self[0] = self[0].clone() + other.clone();
   }
 }
 
 // Subtraction
-impl<T: Clone + From<u8> + Sub<Output = T>, C> SubAssign<&FPS<T, C>> for FPS<T, C> {
+impl<T: Clone + From<u8> + std::ops::Sub<Output = T>, C> std::ops::SubAssign<&FPS<T, C>> for FPS<T, C> {
   fn sub_assign(&mut self, other: &FPS<T, C>) {
     self.expand(other.len());
     for i in 0 .. other.len() {
@@ -81,21 +81,21 @@ impl<T: Clone + From<u8> + Sub<Output = T>, C> SubAssign<&FPS<T, C>> for FPS<T, 
 
 
 // Scalar Subtraction
-impl<T: Clone + Sub<Output = T>, C> SubAssign<&T> for FPS<T, C> {
+impl<T: Clone + std::ops::Sub<Output = T>, C> std::ops::SubAssign<&T> for FPS<T, C> {
   fn sub_assign(&mut self, other: &T) {
     self[0] = self[0].clone() - other.clone();
   }
 }
 
 // Multiplication
-impl<T: Clone, C: Convolution<T> + Clone> MulAssign<&FPS<T, C>> for &FPS<T, C> {
+impl<T: Clone, C: Convolution<T> + Clone> std::ops::MulAssign<&FPS<T, C>> for FPS<T, C> {
   fn mul_assign(&mut self, other: &FPS<T, C>) {
     self.convolve(&other.clone());
   }
 }
 
 // Scalar Multiplication
-impl<T: Clone + Mul<Output = T>, C> MulAssign<&T> for FPS<T, C> {
+impl<T: Clone + std::ops::Mul<Output = T>, C> std::ops::MulAssign<&T> for FPS<T, C> {
   fn mul_assign(&mut self, other: &T) {
     for i in 0 .. self.len() {
       self[i] = self[i].clone() * other.clone();
@@ -104,7 +104,7 @@ impl<T: Clone + Mul<Output = T>, C> MulAssign<&T> for FPS<T, C> {
 }
 
 // Division
-impl<T: Clone + PartialEq + From<u8> + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T>> DivAssign<&FPS<T, C>> for FPS<T, C> {
+impl<T: Clone + PartialEq + From<u8> + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + std::ops::Mul<Output = T> + std::ops::Div<Output = T>, C: Clone + Convolution<T>> std::ops::DivAssign<&FPS<T, C>> for FPS<T, C> {
   fn div_assign(&mut self, other: &FPS<T, C>) {
     if self.len() < other.len() {
       self.clear();
@@ -116,7 +116,7 @@ impl<T: Clone + PartialEq + From<u8> + Add<Output = T> + Sub<Output = T> + Mul<O
 }
 
 // Scalar Division
-impl<T: Clone + Div<Output = T>, C> DivAssign<&T> for FPS<T, C> {
+impl<T: Clone + std::ops::Div<Output = T>, C> std::ops::DivAssign<&T> for FPS<T, C> {
   fn div_assign(&mut self, other: &T) {
     for i in 0 .. self.len() {
       self[i] = self[i].clone() / other.clone();
@@ -125,14 +125,14 @@ impl<T: Clone + Div<Output = T>, C> DivAssign<&T> for FPS<T, C> {
 }
 
 // derivations
-derive_op!(FPS<T, C>, FPS<T, C>, Add, add, AddAssign, add_assign, T, C, [T: Clone + From<u8> + Add<Output = T>, C: Clone]);
-derive_op!(FPS<T, C>, FPS<T, C>, Sub, sub, SubAssign, sub_assign, T, C, [T: Clone + From<u8> + Sub<Output = T>, C: Clone]);
-derive_op!(FPS<T, C>, FPS<T, C>, Mul, mul, MulAssign, mul_assign, T, C, [T: Clone, C: Clone + Convolution<T>]);
-derive_op!(FPS<T, C>, FPS<T, C>, Div, div, DivAssign, div_assign, T, C, [T: Clone + PartialEq + From<u8> + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T>]);
-derive_op!(FPS<T, C>, T, Add, add, AddAssign, add_assign, T, C, [T: Clone + Add<Output = T>, C: Clone]);
-derive_op!(FPS<T, C>, T, Sub, sub, SubAssign, sub_assign, T, C, [T: Clone + Sub<Output = T>, C: Clone]);
-derive_op!(FPS<T, C>, T, Mul, mul, MulAssign, mul_assign, T, C, [T: Clone + Mul<Output = T>, C: Clone]);
-derive_op!(FPS<T, C>, T, Div, div, DivAssign, div_assign, T, C, [T: Clone + Div<Output = T>, C: Clone]);
+derive_op!(FPS<T, C>, FPS<T, C>, [std::ops::Add], add, [std::ops::AddAssign], add_assign, T, C, [T: Clone + From<u8> + std::ops::Add<Output = T>, C: Clone]);
+derive_op!(FPS<T, C>, FPS<T, C>, [std::ops::Sub], sub, [std::ops::SubAssign], sub_assign, T, C, [T: Clone + From<u8> + std::ops::Sub<Output = T>, C: Clone]);
+derive_op!(FPS<T, C>, FPS<T, C>, [std::ops::Mul], mul, [std::ops::MulAssign], mul_assign, T, C, [T: Clone, C: Clone + Convolution<T>]);
+derive_op!(FPS<T, C>, FPS<T, C>, [std::ops::Div], div, [std::ops::DivAssign], div_assign, T, C, [T: Clone + PartialEq + From<u8> + std::ops::Add<Output = T> + std::ops::Sub<Output = T> + std::ops::Mul<Output = T> + std::ops::Div<Output = T>, C: Clone + Convolution<T>]);
+derive_op!(FPS<T, C>, T, [std::ops::Add], add, [std::ops::AddAssign], add_assign, T, C, [T: Clone + std::ops::Add<Output = T>, C: Clone]);
+derive_op!(FPS<T, C>, T, [std::ops::Sub], sub, [std::ops::SubAssign], sub_assign, T, C, [T: Clone + std::ops::Sub<Output = T>, C: Clone]);
+derive_op!(FPS<T, C>, T, [std::ops::Mul], mul, [std::ops::MulAssign], mul_assign, T, C, [T: Clone + std::ops::Mul<Output = T>, C: Clone]);
+derive_op!(FPS<T, C>, T, [std::ops::Div], div, [std::ops::DivAssign], div_assign, T, C, [T: Clone + std::ops::Div<Output = T>, C: Clone]);
 
 #[cfg(test)]
 mod tests {
@@ -144,6 +144,10 @@ mod tests {
 
   #[test]
   fn test_add_sub() {
+    let mut f = F::from_slice(&[1, 2, 3]);
+    f += M::from(1);
+    f += F::from_slice(&[2, 3, 4, 5]);
+
     assert_eq!(F::from_slice(&[1, 2, 3]) + &F::from_slice(&[4, 5, 6, 7]), F::from_slice(&[5, 7, 9, 7]));
     assert_eq!(F::from_slice(&[1, 2, 3]) + M::from(6), F::from_slice(&[7, 2, 3]));
     assert_eq!(F::from_slice(&[1, 2, 3]) - &F::from_slice(&[4, 5, 6, 7]), F::from_slice(&[998244350, 998244350, 998244350, 998244346]));
