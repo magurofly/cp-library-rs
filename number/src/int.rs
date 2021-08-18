@@ -6,6 +6,14 @@ pub trait Int: PrimInt + IntLike {
     U::from(self).unwrap()
   }
 
+  fn mul2(self) -> Self {
+    self << 1
+  }
+
+  fn div2(self) -> Self {
+    self >> 1
+  }
+
   fn is<U: PrimInt>(self, other: U) -> bool {
     self.cast::<U>() == other
   }
@@ -38,8 +46,12 @@ pub trait Int: PrimInt + IntLike {
     (self + other - Self::one()) / other
   }
 
-  fn pow_mod(self, mut e: impl Int, m: Self) -> Self {
-    let mut x = self;
+  fn pow_mod<E: Int>(self, mut e: E, m: Self) -> Self {
+    let mut x = self % m;
+    if e.is_negative() {
+      x = x.inv_mod(m);
+      e = E::zero() - e;
+    }
     let mut r = Self::one();
     while !e.is_zero() {
       if e.is_odd() {
@@ -49,6 +61,47 @@ pub trait Int: PrimInt + IntLike {
       e = e >> 1;
     }
     r
+  }
+
+  /// mod p 上の平方根を返す
+  /// `p`: 素数
+  fn sqrt_mod(self, p: Self) -> Option<Self> {
+    assert!(!self.is_negative() && self < p);
+    if p.as_usize() <= 2 || self.as_usize() <= 1 {
+      return Some(self);
+    }
+
+    if !self.pow_mod(p.sub1().div2(), p).is_one() {
+      return None;
+    }
+
+    let mut add = Self::one();
+    while add.mul2() < p {
+      add = add.mul2();
+    }
+    let mut b = Self::one();
+    while b.is_zero() || b.pow_mod(p.sub1().div2(), p).is_one() {
+      b = (b + add) % p;
+    }
+
+    let e = p.sub1().trailing_zeros() as usize;
+    let q = p.sub1() >> e;
+    // p - 1 = q << e
+
+    let mut x = self.pow_mod(q.add1().div2(), p);
+    let mut b = b.pow_mod(q, p);
+
+    let mut shift = 2;
+    while x * x % p != self {
+      let error = self.pow_mod(p.as_usize() - 2, p) * x % p * x % p;
+      let exp = 2.pow_mod(e - shift, p.cast::<i64>() - 1);
+      if !error.pow_mod(exp, p).is_one() {
+        x = x * b % p;
+      }
+      b = b * b % p;
+      shift += 1;
+    }
+    Some(x)
   }
 
   /// mod m 上の逆元を返す
@@ -312,3 +365,18 @@ pub trait Int: PrimInt + IntLike {
 }
 
 impl<T: PrimInt + IntLike> Int for T {}
+
+
+#[cfg(test)]
+pub mod test {
+  use super::*;
+
+  #[test]
+  fn test_sqrt_mod() {
+    assert_eq!(Some(0), 0.sqrt_mod(5));
+    assert_eq!(Some(1), 1.sqrt_mod(5));
+    assert_eq!(None, 2.sqrt_mod(5));
+    assert_eq!(None, 3.sqrt_mod(5));
+    assert_eq!(Some(2), 4.sqrt_mod(5));
+  }
+}

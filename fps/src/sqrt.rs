@@ -1,43 +1,46 @@
 use super::*;
+use acl_modint::ModIntBase;
 use fft::*;
 use number::*;
-use std::ops::*;
 
-impl<T: Clone + PartialEq + From<u8> + Add<Output = T> + Sub<Output = T> + Mul<Output = T> + Div<Output = T>, C: Clone + Convolution<T>> FPS<T, C> {
-  pub fn sqrt_at(&self, deg: usize) -> Self {
-    let n = self.deg();
+impl<T: ModIntBase, C: Clone + Convolution<T>> FPS<T, C> {
+  pub fn sqrt_at(&self, deg: usize) -> Option<Self> {
+    if self.deg() == 0 {
+      return Some(Self::new());
+    }
     if self[0] == T::from(0) {
-      for i in 1 .. n {
+      for i in 1 .. self.deg() {
         if self[i] != T::from(0) {
           if i.is_odd() {
-            return Self::new();
+            return None;
           }
-          if deg <= i / 2 {
+          if deg - i / 2 <= 0 {
             break;
           }
-          let mut ret = &(self >> i).sqrt_at(deg - i / 2) << (i / 2);
-          if ret.deg() < deg {
-            ret.resize(deg);
-          }
-          return ret;
+          let mut ret = (self >> i).sqrt_at(deg - i / 2)?;
+          ret <<= i / 2;
+          ret.expand(deg);
+          return Some(ret);
         }
       }
-      return Self::from(vec![T::from(0); deg]);
+      return Some(Self::with_deg(deg));
     }
-    
-    let mut ret = Self::from(vec![T::from(1)]);
-    let inv2 = T::from(1) / T::from(2);
+    let sqrt = T::from((self[0].val() as i64).sqrt_mod(T::modulus() as i64)?);
+    if sqrt * sqrt != self[0] {
+      return None;
+    }
+    let mut ret = Self::from_slice(&[sqrt]);
+    let inv2 = T::from(2).inv();
     let mut i = 1;
     while i < deg {
-      ret += &(self.pre(i << 1) * &ret.inv_at(i << 1));
-      ret *= inv2.clone();
+      ret += self.pre(i << 1) * ret.inv_at(i << 1);
+      ret *= inv2;
       i <<= 1;
     }
-    ret.truncate(deg);
-    ret
+    Some(ret)
   }
 
-  pub fn sqrt(&self) -> Self {
+  pub fn sqrt(&self) -> Option<Self> {
     self.sqrt_at(self.deg())
   }
 }
@@ -56,6 +59,15 @@ pub mod test {
 
   #[test]
   fn test_sqrt() {
-    assert_eq!(fps(&[0, 0, 9, 12]).sqrt(), fps(&[0, 3, 2, 332748117]));
+    let samples = vec![
+      fps(&[4]),
+      fps(&[0, 0, 9, 12]),
+    ];
+    for f in samples {
+      let g = f.sqrt().expect("sqrt not found");
+      assert_eq!(f, (&g * &g).pre(f.deg()));
+    }
+
+    assert_eq!(None, fps(&[0, 0, 10, 12]).sqrt());
   }
 }
