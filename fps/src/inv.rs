@@ -9,12 +9,7 @@ impl<T: Clone + PartialEq + From<u8> + Add<Output = T> + Sub<Output = T> + Mul<O
     let mut r = Self::from(vec![T::from(1) / self[0].clone()]);
     let mut i = 1;
     while i < deg {
-      let mut f = &r + &r;
-      f += &r;
-      let mut g = r.clone();
-      g *= &r;
-      g *= &self.pre(i << 1);
-      f -= &g;
+      r = &r + &r - &r * &r * self.pre(i << 1);
       r.truncate(i << 1);
       i <<= 1;
     }
@@ -35,6 +30,9 @@ pub mod test {
   
   #[test]
   fn test_inv() {
-    assert_eq!(F::from_slice(&[5, 4, 3, 2, 1]).inv(), F::from_slice(&[598946612, 718735934, 862483121, 635682004, 163871793]));
+    let f = F::from_slice(&[5, 4, 3, 2, 1]);
+    println!("deg is {}", f.deg());
+    let g = f.inv();
+    assert_eq!(g, F::from_slice(&[598946612, 718735934, 862483121, 635682004, 163871793]));
   }
 }

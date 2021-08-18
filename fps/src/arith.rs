@@ -147,9 +147,11 @@ mod tests {
     let mut f = F::from_slice(&[1, 2, 3]);
     f += M::from(1);
     f += F::from_slice(&[2, 3, 4, 5]);
+    f += &F::from_slice(&[1]);
+    assert_eq!(f, F::from_slice(&[5, 5, 7, 5]));
 
-    assert_eq!(F::from_slice(&[1, 2, 3]) + &F::from_slice(&[4, 5, 6, 7]), F::from_slice(&[5, 7, 9, 7]));
-    assert_eq!(F::from_slice(&[1, 2, 3]) + M::from(6), F::from_slice(&[7, 2, 3]));
+    assert_eq!(&F::from_slice(&[1, 2, 3]) + &F::from_slice(&[4, 5, 6, 7]), F::from_slice(&[5, 7, 9, 7]));
+    assert_eq!(&F::from_slice(&[1, 2, 3]) + M::from(6), F::from_slice(&[7, 2, 3]));
     assert_eq!(F::from_slice(&[1, 2, 3]) - &F::from_slice(&[4, 5, 6, 7]), F::from_slice(&[998244350, 998244350, 998244350, 998244346]));
     assert_eq!(F::from_slice(&[1, 2, 3]) - M::from(6), F::from_slice(&[998244348, 2, 3]));
   }
