@@ -1,6 +1,7 @@
 use super::*;
 use number::*;
 use acl_modint::*;
+use fft::*;
 
 pub fn bernoulli<T: ModIntBase, C: Clone + Convolution<T>>(n: usize) -> Vec<T> {
   let mut x = FPS::<T, C>::with_deg(n + 1);
