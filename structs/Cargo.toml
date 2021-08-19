@@ -8,6 +8,7 @@ license = "CC0-1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+num-traits = "=0.2.11"
 template = { path = "../template" }
 acl_segtree = { package = "ac-library-rs-parted-segtree", path = "../../ac/ac-library-rs-parted-segtree" }
 acl_lazysegtree = { package = "ac-library-rs-parted-lazysegtree", path = "../../ac/ac-library-rs-parted-lazysegtree" }
