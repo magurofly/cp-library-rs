@@ -10,3 +10,4 @@ pub mod calc;
 pub mod explog;
 pub mod sqrt;
 pub mod x_shift;
+pub mod diffeq;

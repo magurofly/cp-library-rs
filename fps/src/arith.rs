@@ -134,6 +134,21 @@ impl<T: Clone + PartialEq + From<u8> + std::ops::Add<Output = T> + std::ops::Sub
   }
 }
 
+// Negation
+impl<T: Clone + std::ops::Neg<Output = T>, C> std::ops::Neg for FPS<T, C> {
+  type Output = Self;
+  fn neg(self) -> Self {
+    self.map(|x, _| -x.clone())
+  }
+}
+
+impl<T: Clone + std::ops::Neg<Output = T>, C> std::ops::Neg for &FPS<T, C> {
+  type Output = FPS<T, C>;
+  fn neg(self) -> FPS<T, C> {
+    self.map(|x, _| -x.clone())
+  }
+}
+
 // derivations
 derive_op!(FPS<T, C>, FPS<T, C>, [std::ops::Add], add, [std::ops::AddAssign], add_assign, T, C, [T: Clone + From<u8> + std::ops::Add<Output = T>, C: Clone]);
 derive_op!(FPS<T, C>, FPS<T, C>, [std::ops::Sub], sub, [std::ops::SubAssign], sub_assign, T, C, [T: Clone + From<u8> + std::ops::Sub<Output = T>, C: Clone]);
