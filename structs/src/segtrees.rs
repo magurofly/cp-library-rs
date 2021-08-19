@@ -133,21 +133,6 @@ pub trait LazySeg {
 
   /// 作用の合成
   fn map_compose(f: Self::F, g: Self::F) -> Self::F;
-
-  /// 長さ `n` の遅延セグメント木を作る
-  fn new_lazysegtree(n: usize) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
-    LazySegtree::from(vec![(Self::op_id(), 1); n])
-  }
-
-  /// 長さ `n` 、要素が全て `init` のセグメント木を作る
-  fn new_lazysegtree_of(n: usize, init: Self::T) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
-    LazySegtree::from(vec![(init, 1); n])
-  }
-
-  /// `IntoIterator` から遅延セグメント木を作る
-  fn lazysegtree_from_iter(i: impl IntoIterator<Item = Self::T>) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
-    LazySegtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
-  }
 }
 impl<L: LazySeg> Seg for L {
   type T = L::T;
@@ -161,6 +146,24 @@ impl<L: LazySeg> SegMap for L {
   fn map_compose(f: L::F, g: L::F) -> L::F { L::map_compose(f, g) }
   fn map_id() -> L::F { L::map_id() }
 }
+
+pub trait LazySegInit<T: Clone> : Seg<T = T> + SegMap<T = T> {
+  /// 長さ `n` の遅延セグメント木を作る
+  fn new_lazysegtree(n: usize) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
+    LazySegtree::from(vec![(Self::op_id(), 1); n])
+  }
+
+  /// 長さ `n` 、要素が全て `init` のセグメント木を作る
+  fn new_lazysegtree_of(n: usize, init: T) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
+    LazySegtree::from(vec![(init, 1); n])
+  }
+
+  /// `IntoIterator` から遅延セグメント木を作る
+  fn lazysegtree_from_iter(i: impl IntoIterator<Item = T>) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
+    LazySegtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
+  }
+}
+impl<T: Clone, L: Seg<T = T> + SegMap<T = T>> LazySegInit<T> for L {}
 
 pub struct SegHelper<L>(PhantomData<L>);
 impl<L: Seg> Monoid for SegHelper<L> {
