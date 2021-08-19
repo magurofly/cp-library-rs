@@ -76,6 +76,39 @@ pub trait Seg {
 
   /// 二項演算の単位元
   fn op_id() -> Self::T;
+
+  /// 長さ `n` のセグメント木を作る
+  fn new_segtree(n: usize) -> Segtree<SegHelper<Self>> where Self: Sized {
+    Segtree::from(vec![(Self::op_id(), 1); n])
+  }
+
+  /// 長さ `n` 、要素が全て `init` のセグメント木を作る
+  fn new_segtree_of(n: usize, init: Self::T) -> Segtree<SegHelper<Self>> where Self: Sized {
+    Segtree::from(vec![(init, 1); n])
+  }
+
+  /// `IntoIterator` からセグメント木を作る
+  fn segtree_from_iter(i: impl IntoIterator<Item = Self::T>) -> Segtree<SegHelper<Self>> where Self: Sized {
+    Segtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
+  }
+}
+
+/// 遅延セグ木作用ヘルパー
+pub trait SegMap {
+  /// 値
+  type T: Clone;
+
+  /// 作用
+  type F: Clone;
+
+  /// 作用
+  fn map(f: Self::F, x: Self::T, n: usize) -> Self::T;
+
+  /// 作用の単位元
+  fn map_id() -> Self::F;
+
+  /// 作用の合成
+  fn map_compose(f: Self::F, g: Self::F) -> Self::F;
 }
 
 /// 遅延セグ木実装ヘルパー
@@ -102,64 +135,52 @@ pub trait LazySeg {
   fn map_compose(f: Self::F, g: Self::F) -> Self::F;
 
   /// 長さ `n` の遅延セグメント木を作る
-  fn new_lazysegtree(n: usize) -> LazySegtree<SegHelper<Self>> where Self: Sized {
+  fn new_lazysegtree(n: usize) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
     LazySegtree::from(vec![(Self::op_id(), 1); n])
   }
 
-  /// 長さ `n` のセグメント木を作る
-  fn new_segtree(n: usize) -> Segtree<SegHelper<Self>> where Self: Sized {
-    Segtree::from(vec![(Self::op_id(), 1); n])
+  /// 長さ `n` 、要素が全て `init` のセグメント木を作る
+  fn new_lazysegtree_of(n: usize, init: Self::T) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
+    LazySegtree::from(vec![(init, 1); n])
   }
 
   /// `IntoIterator` から遅延セグメント木を作る
-  fn lazysegtree_from_iter(i: impl IntoIterator<Item = Self::T>) -> LazySegtree<SegHelper<Self>> where Self: Sized {
+  fn lazysegtree_from_iter(i: impl IntoIterator<Item = Self::T>) -> LazySegtree<LazySegHelper<Self, Self>> where Self: Sized {
     LazySegtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
-  }
-
-  /// `IntoIterator` からセグメント木を作る
-  fn segtree_from_iter(i: impl IntoIterator<Item = Self::T>) -> Segtree<SegHelper<Self>> where Self: Sized {
-    Segtree::from(i.into_iter().map(|x| (x, 1)).collect::<Vec<_>>())
   }
 }
 impl<L: LazySeg> Seg for L {
   type T = L::T;
-
-  fn op(x: Self::T, y: Self::T) -> Self::T {
-    L::op(x, y)
-  }
-
-  fn op_id() -> Self::T {
-    L::op_id()
-  }
+  fn op(x: L::T, y: L::T) -> L::T { L::op(x, y) }
+  fn op_id() -> L::T { L::op_id() }
+}
+impl<L: LazySeg> SegMap for L {
+  type T = L::T;
+  type F = L::F;
+  fn map(f: L::F, x: L::T, n: usize) -> L::T { L::map(f, x, n) }
+  fn map_compose(f: L::F, g: L::F) -> L::F { L::map_compose(f, g) }
+  fn map_id() -> L::F { L::map_id() }
 }
 
 pub struct SegHelper<L>(PhantomData<L>);
 impl<L: Seg> Monoid for SegHelper<L> {
   type S = (L::T, usize);
-
-  fn identity() -> (L::T, usize) {
-    (L::op_id(), 0)
-  }
-
-  fn binary_operation((a, n): &Self::S, (b, m): &Self::S) -> Self::S {
-    (L::op(a.clone(), b.clone()), *n + *m)
-  }
+  fn identity() -> (L::T, usize) { (L::op_id(), 0) }
+  fn binary_operation((a, n): &Self::S, (b, m): &Self::S) -> Self::S { (L::op(a.clone(), b.clone()), *n + *m) }
 }
-impl<L: LazySeg> MapMonoid for SegHelper<L> {
-  type M = SegHelper<L>;
-  type F = L::F;
 
-  fn identity_map() -> L::F {
-    L::map_id()
-  }
-
-  fn mapping(f: &L::F, (x, n): &(L::T, usize)) -> (L::T, usize) {
-    (L::map(f.clone(), x.clone(), *n), *n)
-  }
-
-  fn composition(f: &L::F, g: &L::F) -> L::F {
-    L::map_compose(f.clone(), g.clone())
-  }
+pub struct LazySegHelper<M, F>(PhantomData<(M, F)>);
+impl<T: Clone, M: Seg<T = T>, F: SegMap<T = T>> Monoid for LazySegHelper<M, F> {
+  type S = (M::T, usize);
+  fn identity() -> (M::T, usize) { (M::op_id(), 0) }
+  fn binary_operation((a, n): &Self::S, (b, m): &Self::S) -> Self::S { (M::op(a.clone(), b.clone()), *n + *m) }
+}
+impl<T: Clone, M: Seg<T = T>, F: SegMap<T = T>> MapMonoid for LazySegHelper<M, F> {
+  type M = SegHelper<M>;
+  type F = F::F;
+  fn identity_map() -> F::F { F::map_id() }
+  fn mapping(f: &F::F, (x, n): &(F::T, usize)) -> (F::T, usize) { (F::map(f.clone(), x.clone(), *n), *n) }
+  fn composition(f: &F::F, g: &F::F) -> F::F { F::map_compose(f.clone(), g.clone()) }
 }
 
 /// Range Add Range Sum 系の、演算と作用が同じときのセグ木

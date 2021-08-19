@@ -1,111 +1,35 @@
 use super::*;
 use std::{marker::PhantomData, ops::*};
 
-pub struct RangeSum<T>(PhantomData<T>);
-impl<T: Clone + Add<Output = T>> SegSemiGroup for RangeSum<T> {
-  type T = T;
-
-  fn op(x: T, y: T) -> T {
-    x + y
+macro_rules! impl_semigroup {
+  ($Name:ident, $T: ident, [$($traits:tt)*], $op:item) => {
+    pub struct $Name<$T>(PhantomData<$T>);
+    impl<$T: $($traits)*> SegSemiGroup for $Name<$T> {
+      type T = $T;
+      $op
+    }
   }
 }
 
-pub struct RangeMul<T>(PhantomData<T>);
-impl<T: Clone + Mul<Output = T>> SegSemiGroup for RangeMul<T> {
-  type T = T;
+impl_semigroup!(RangeSum, T, [Clone + Add<Output = T>], fn op(x: T, y: T) -> T { x + y });
+impl_semigroup!(RangeMul, T, [Clone + Mul<Output = T>], fn op(x: T, y: T) -> T { x * y });
+impl_semigroup!(RangeAnd, T, [Clone + BitAnd<Output = T>], fn op(x: T, y: T) -> T { x & y });
+impl_semigroup!(RangeXor, T, [Clone + BitXor<Output = T>], fn op(x: T, y: T) -> T { x ^ y });
+impl_semigroup!(RangeOr, T, [Clone + BitOr<Output = T>], fn op(x: T, y: T) -> T { x | y });
+impl_semigroup!(RangeMin, T, [Clone + Ord], fn op(x: T, y: T) -> T { x.min(y) });
+impl_semigroup!(RangeMax, T, [Clone + Ord], fn op(x: T, y: T) -> T { x.max(y) });
 
-  fn op(x: T, y: T) -> T {
-    x * y
-  }
+pub struct RangeIdempotentAdd<T>(PhantomData<T>);
+impl<T: Clone + Add<Output = T>> SegMap for RangeAddRangeMin<T> {
+  type T = Option<T>;
+  type F = Option<T>;
+  fn map(f: Option<T>, x: Option<T>, _n: usize) -> Option<T> { f.and_then(|f| x.clone().map(|x| f + x)).or(x) }
+  fn map_id() -> Option<T> { None }
+  fn map_compose(f: Option<T>, g: Option<T>) -> Option<T> { f.map(|f| g.clone().map(|g| f.clone() + g).unwrap_or(f)).or(g) }
 }
 
-pub struct RangeMin<T>(PhantomData<T>);
-impl<T: Clone + Ord> SegSemiGroup for RangeMin<T> {
-  type T = T;
-
-  fn op(x: T, y: T) -> T {
-    x.min(y)
-  }
-}
-
-pub struct RangeMax<T>(PhantomData<T>);
-impl<T: Clone + Ord> SegSemiGroup for RangeMax<T> {
-  type T = T;
-
-  fn op(x: T, y: T) -> T {
-    x.max(y)
-  }
-}
-
-
-// pub struct RangeAddRangeSum<T>(PhantomData<T>);
-// impl<T: Copy + Add<Output = T> + Mul<Output = T> + TryFrom<usize> + Default> SegMonoid for RangeAddRangeSum<T> where <T as TryFrom<usize>>::Error: std::fmt::Debug {
-//   type T = T;
-
-//   fn op(x: T, y: T) -> T {
-//     x + y
-//   }
-
-//   fn id() -> T {
-//     T::default()
-//   }
-
-//   fn pow(x: T, n: usize) -> T {
-//     x * T::try_from(n).unwrap()
-//   }
-// }
-
-// pub struct RangeAddRangeMin<T>(PhantomData<T>);
-// impl<T: Copy + Add<Output = T> + Default + Ord + BoundedAbove> LazySeg for RangeAddRangeMin<T> {
-//   type T = T;
-//   type F = T;
-
-//   fn op(x: T, y: T) -> T {
-//     x.min(y)
-//   }
-
-//   fn op_id() -> T {
-//     T::max_value()
-//   }
-
-//   fn map(f: T, x: T, _n: usize) -> T {
-//     f + x
-//   }
-
-//   fn map_id() -> T {
-//     T::default()
-//   }
-
-//   fn map_compose(f: T, g: T) -> T {
-//     f + g
-//   }
-// }
-
-// pub struct RangeAddRangeMax<T>(PhantomData<T>);
-// impl<T: Copy + Add<Output = T> + Default + Ord + BoundedBelow> LazySeg for RangeAddRangeMax<T> {
-//   type T = T;
-//   type F = T;
-
-//   fn op(x: T, y: T) -> T {
-//     x.max(y)
-//   }
-
-//   fn op_id() -> T {
-//     T::min_value()
-//   }
-
-//   fn map(f: T, x: T, _n: usize) -> T {
-//     f + x
-//   }
-
-//   fn map_id() -> T {
-//     T::default()
-//   }
-
-//   fn map_compose(f: T, g: T) -> T {
-//     f + g
-//   }
-// }
+pub type RangeAddRangeMin<T> = LazySegHelper<RangeMin<T>, RangeIdempotentAdd<T>>;
+pub type RangeAddRangeMax<T> = LazySegHelper<RangeMax<T>, RangeIdempotentAdd<T>>;
 
 // pub struct RangeAffineRangeSum<T>(PhantomData<T>);
 // impl<T: Clone + Add<Output = T> + Mul<Output = T> + Zero + One> LazySeg for RangeAffineRangeSum<T> {
