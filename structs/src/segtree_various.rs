@@ -3,17 +3,17 @@ use std::{marker::PhantomData, ops::*};
 use num_traits::*;
 
 macro_rules! impl_semigroup {
-  ($Name:ident, $T: ident, [$($traits:tt)*], $op:item) => {
+  ($Name:ident, $T: ident, [$($traits:tt)*], {$($impls:tt)*}) => {
     pub struct $Name<$T>(PhantomData<$T>);
     impl<$T: $($traits)*> SegSemiGroup for $Name<$T> {
       type T = $T;
-      $op
+      $($impls)*
     }
   }
 }
 
 macro_rules! impl_monoid {
-  ($Name:ident, $T:ident, [$($traits:tt)*], {$($impls:item)*}) => {
+  ($Name:ident, $T:ident, [$($traits:tt)*], {$($impls:tt)*}) => {
     pub struct $Name<$T>(PhantomData<$T>);
     impl<$T> SegMonoid for $Name<$T> where $($traits)* {
       type T = $T;
@@ -46,13 +46,27 @@ impl_monoid!(RangeMax, T, [T: Clone + Ord + Bounded], {
   fn pow(x: T, _n: usize) -> T { x }
 });
 
-impl_semigroup!(RangeSemiSum, T, [Clone + Add<Output = T>], fn op(x: T, y: T) -> T { x + y });
-impl_semigroup!(RangeSemiMul, T, [Clone + Mul<Output = T>], fn op(x: T, y: T) -> T { x * y });
-impl_semigroup!(RangeSemiAnd, T, [Clone + BitAnd<Output = T>], fn op(x: T, y: T) -> T { x & y });
-impl_semigroup!(RangeSemiXor, T, [Clone + BitXor<Output = T>], fn op(x: T, y: T) -> T { x ^ y });
-impl_semigroup!(RangeSemiOr, T, [Clone + BitOr<Output = T>], fn op(x: T, y: T) -> T { x | y });
-impl_semigroup!(RangeSemiMin, T, [Clone + Ord], fn op(x: T, y: T) -> T { x.min(y) });
-impl_semigroup!(RangeSemiMax, T, [Clone + Ord], fn op(x: T, y: T) -> T { x.max(y) });
+impl_semigroup!(RangeSemiSum, T, [Clone + Add<Output = T>], {
+  fn op(x: T, y: T) -> T { x + y }
+});
+impl_semigroup!(RangeSemiMul, T, [Clone + Mul<Output = T>], {
+  fn op(x: T, y: T) -> T { x * y }
+});
+impl_semigroup!(RangeSemiAnd, T, [Clone + BitAnd<Output = T>], {
+  fn op(x: T, y: T) -> T { x & y }
+});
+impl_semigroup!(RangeSemiXor, T, [Clone + BitXor<Output = T>], {
+  fn op(x: T, y: T) -> T { x ^ y }
+});
+impl_semigroup!(RangeSemiOr, T, [Clone + BitOr<Output = T>], {
+  fn op(x: T, y: T) -> T { x | y }
+});
+impl_semigroup!(RangeSemiMin, T, [Clone + Ord], {
+  fn op(x: T, y: T) -> T { x.min(y) }
+});
+impl_semigroup!(RangeSemiMax, T, [Clone + Ord], {
+  fn op(x: T, y: T) -> T { x.max(y) }
+});
 
 pub struct RangeIdempotentMapAdd<T>(PhantomData<T>);
 impl<T: Clone + Add<Output = T>> SegMap for RangeIdempotentMapAdd<T> {
