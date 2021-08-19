@@ -3,6 +3,8 @@
 //! # 実装例
 //! 
 //! ```
+//! use structs::segtrees::*;
+//!
 //! struct RangeAddRangeMin;
 //! impl LazySeg for RangeAddRangeMin {
 //!   type T = i64; // 値
@@ -55,8 +57,8 @@
 //!   }
 //! }
 //! 
-//! let mut seg1 = RangeAddRangeMin::new(10);
-//! let mut seg2 = RangeAddRangeMin::from_iter(vec![1, 2, 3, 4, 5]);
+//! let mut seg1 = RangeAddRangeMin::new_lazysegtree(10);
+//! let mut seg2 = RangeAddRangeMin::lazysegtree_from_iter(vec![1, 2, 3, 4, 5]);
 //! 
 //! ```
 
