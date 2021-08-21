@@ -46,6 +46,21 @@ pub trait Int: PrimInt + IntLike {
     (self + other - Self::one()) / other
   }
 
+  fn digits(self) -> Vec<Self> where Self: ToString {
+    let mut v = Vec::new();
+    let mut n = self;
+    while n.is_positive() {
+      let r = n % 10.cast();
+      v.push(r);
+      n = n / 10.cast();
+    }
+    if v.is_empty() {
+      v.push(Self::zero());
+    }
+    v.reverse();
+    v
+  }
+
   fn pow_mod<E: Int>(self, mut e: E, m: Self) -> Self {
     let mut x = self % m;
     if e.is_negative() {

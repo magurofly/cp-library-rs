@@ -213,26 +213,11 @@ pub trait SegMonoid {
 impl<M: SegMonoid> LazySeg for M {
   type T = M::T;
   type F = M::T;
-
-  fn op(x: Self::T, y: Self::T) -> Self::T {
-    <M as SegMonoid>::op(x, y)
-  }
-
-  fn op_id() -> Self::T {
-    M::id()
-  }
-
-  fn map(f: Self::F, x: Self::T, n: usize) -> Self::T {
-    <M as SegMonoid>::op(M::pow(f, n), x)
-  }
-
-  fn map_id() -> Self::F {
-    M::id()
-  }
-
-  fn map_compose(f: Self::F, g: Self::F) -> Self::F {
-    <M as SegMonoid>::op(f, g)
-  }
+  fn op(x: Self::T, y: Self::T) -> Self::T { <M as SegMonoid>::op(x, y) }
+  fn op_id() -> Self::T { M::id() }
+  fn map(f: Self::F, x: Self::T, n: usize) -> Self::T { <M as SegMonoid>::op(M::pow(f, n), x) }
+  fn map_id() -> Self::F { M::id() }
+  fn map_compose(f: Self::F, g: Self::F) -> Self::F { <M as SegMonoid>::op(f, g) }
 }
 
 pub trait SegSemiGroup {
@@ -244,20 +229,6 @@ pub trait SegSemiGroup {
 }
 impl<M: SegSemiGroup> SegMonoid for M {
   type T = Option<M::T>;
-
-  fn op(x: Self::T, y: Self::T) -> Self::T {
-    if let Some(x) = x {
-      if let Some(y) = y {
-        Some(M::op(x, y))
-      } else {
-        Some(x)
-      }
-    } else {
-      y
-    }
-  }
-
-  fn id() -> Self::T {
-    None
-  }
+  fn op(x: Self::T, y: Self::T) -> Self::T { x.clone().map(|x| y.clone().map(|y| M::op(x.clone(), y)).unwrap_or(x)).or(y) }
+  fn id() -> Self::T { None }
 }

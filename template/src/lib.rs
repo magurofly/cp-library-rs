@@ -50,8 +50,8 @@ pub trait MyIntoIter : IntoIterator where Self: Sized {
 impl<T> MyIntoIter for T where T: IntoIterator {}
 
 pub trait MyOrd : PartialOrd + Sized {
-  fn max(self, other: Self) -> Self { if &self < &other { other } else { self } }
-  fn min(self, other: Self) -> Self { if &self > &other { other } else { self } }
+  // fn max(self, other: Self) -> Self { if &self < &other { other } else { self } }
+  // fn min(self, other: Self) -> Self { if &self > &other { other } else { self } }
   fn chmax(&mut self, mut rhs: Self) -> bool { if self < &mut rhs { *self = rhs; true } else { false } }
   fn chmin(&mut self, mut rhs: Self) -> bool { if self > &mut rhs { *self = rhs; true } else { false } }
 }
