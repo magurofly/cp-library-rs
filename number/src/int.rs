@@ -377,6 +377,26 @@ pub trait Int: PrimInt + IntLike {
       i = i.sub1();
     }
   }
+
+  /// 約数を昇順に全列挙
+  fn divisors(self) -> Vec<Self> {
+    let mut divisors = vec![];
+    let mut divisors2 = vec![];
+    let mut k = Self::one();
+    while k * k < self {
+      if (self % k).is_zero() {
+        divisors.push(k);
+        divisors2.push(self / k);
+      }
+      k = k.add1();
+    }
+    if k * k == self {
+      divisors.push(k);
+    }
+    divisors2.reverse();
+    divisors.append(&mut divisors2);
+    divisors
+  }
 }
 
 impl<T: PrimInt + IntLike> Int for T {}
