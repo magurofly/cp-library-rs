@@ -1,8 +1,10 @@
 pub mod vec_graph;
+pub use vec_graph::*;
 
-pub trait Graph<E> {
-  fn n(&self) -> usize;
-  fn m(&self) -> usize;
-}
+pub mod graph_trait;
+pub use graph_trait::*;
 
-pub use vec_graph::VecGraph;
+pub mod edge_data;
+pub use edge_data::*;
+
+pub mod shortest_path;
