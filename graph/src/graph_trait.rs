@@ -1,7 +1,7 @@
 use super::*;
 use template::*;
 
-pub trait Graph<E> {
+pub trait Graph<E>: Sized {
   type Edge: Edge<E>;
 
   fn n(&self) -> usize;
@@ -9,72 +9,77 @@ pub trait Graph<E> {
 
   fn each_edge_from(&self, from: usize, f: impl FnMut(&Self::Edge));
 
+  fn each_edge(&self, mut f: impl FnMut(&EdgeInfo<E, Self::Edge>)) {
+    for v in 0 .. self.n() {
+      self.each_edge_from(v, |e| (f)(&EdgeInfo::new(v, e)));
+    }
+  }
+
+  // utils
+
+  fn rev<G: GraphMut<E>>(&self) -> G where E: Clone {
+    let mut g = G::new_graph(self.n());
+    self.each_edge(|e| {
+      g.add_arc(e.to(), e.from(), e.weight().clone());
+    });
+    g
+  }
+
   // algorithms
 
-  fn dijkstra_by_with_heap<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, heap: impl Heap<(C, usize)>, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> where Self: Sized {
+  fn dijkstra_by_with_heap<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, heap: impl Heap<(C, usize)>, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
     shortest_path::dijkstra(self, start, heap, cost)
   }
 
-  fn dijkstra_by<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> where Self: Sized {
+  fn dijkstra_by<C: Copy + std::ops::Add<Output = C> + Default + Ord>(&self, start: usize, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> Vec<Option<C>> {
     shortest_path::dijkstra(self, start, BinaryHeapReversed::new(), cost)
   }
 
   fn dijkstra(&self, start: usize) -> Vec<Option<E>> where E: Copy + std::ops::Add<Output = E> + Default + Ord, Self: Sized {
     shortest_path::dijkstra(self, start, BinaryHeapReversed::new(), |edge, dist| Some(dist + *edge.weight()))
   }
-}
 
-pub trait GraphMut<E>: Graph<E> {
-  fn add_arc(&mut self, from: usize, to: usize, weight: E);
-
-  fn add_edge(&mut self, from: usize, to: usize, weight: E) where E: Clone {
-    self.add_arc(from, to, weight.clone());
-    self.add_arc(to, from, weight);
+  fn bfs_multistart(&self, start: impl IntoIterator<Item = usize>) -> Vec<Option<usize>> {
+    shortest_path::bfs(self, start)
   }
 
-  fn add_arcs<D: EdgeData<E>>(&mut self, arcs: impl IntoIterator<Item = D>) where E: Clone {
-    for arc in arcs {
-      self.add_arc(arc.from(), arc.to(), arc.weight().clone());
-    }
+  fn bfs(&self, start: usize) -> Vec<Option<usize>> {
+    shortest_path::bfs(self, Some(start))
   }
 
-  fn add_edges<D: EdgeData<E>>(&mut self, edges: impl IntoIterator<Item = D>) where E: Clone {
-    for edge in edges {
-      self.add_edge(edge.from(), edge.to(), edge.weight().clone());
-    }
-  }
-}
-
-pub trait Edge<E> {
-  fn new(to: usize, weight: E) -> Self;
-  fn to(&self) -> usize;
-  fn weight(&self) -> &E;
-}
-
-impl<E> Edge<E> for (usize, E) {
-  fn new(to: usize, weight: E) -> Self {
-    (to, weight)
+  /// DFS をする
+  /// `f(whence, v)`
+  /// whence: `Pre` (先行順) , `Mid` (中間) , `Post` (後行順)
+  /// pre, mid, post をすべてするとオイラーツアーになる
+  fn dfs(&self, start: usize, f: impl FnMut(DfsOrder, usize)) where Self: Sized {
+    dfs_impl::dfs(self, start, f);
   }
 
-  fn to(&self) -> usize {
-    self.0
+  fn dfs_preorder(&self, start: usize, mut f: impl FnMut(usize)) where Self: Sized {
+    dfs_impl::dfs(self, start, |whence, u| {
+      match whence {
+        DfsOrder::Pre => { (f)(u); }
+        _ => {}
+      }
+    });
   }
 
-  fn weight(&self) -> &E {
-    &self.1
-  }
-}
-
-impl Edge<()> for usize {
-  fn new(to: usize, _weight: ()) -> Self {
-    to
-  }
-
-  fn to(&self) -> usize {
-    *self
+  fn dfs_postorder(&self, start: usize, mut f: impl FnMut(usize)) where Self: Sized {
+    dfs_impl::dfs(self, start, |whence, u| {
+      match whence {
+        DfsOrder::Post => { (f)(u); }
+        _ => {}
+      }
+    });
   }
 
-  fn weight(&self) -> &() {
-    &()
+  fn dfs_eulertour(&self, start: usize, mut f: impl FnMut(usize)) where Self: Sized {
+    let mut last = self.n();
+    dfs_impl::dfs(self, start, |_, u| {
+      if last != u {
+        last = u;
+        (f)(u);
+      }
+    });
   }
 }

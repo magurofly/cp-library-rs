@@ -1,5 +1,6 @@
 use super::*;
 use template::*;
+use std::collections::*;
 
 /// ダイクストラ法
 /// `g`: グラフ
@@ -22,4 +23,23 @@ pub fn dijkstra<E, G: Graph<E>, C: Copy + std::ops::Add<Output = C> + Default + 
     });
   }
   dists
+}
+
+/// BFS
+pub fn bfs<E, G: Graph<E>>(g: &G, start: impl IntoIterator<Item = usize>) -> Vec<Option<usize>> {
+  let mut queue = start.into_iter().collect::<VecDeque<_>>();
+  let mut dist = vec![None; g.n()];
+  for &u in &queue {
+    dist[u] = Some(0);
+  }
+  while let Some(u) = queue.pop_front() {
+    let d1 = dist[u].unwrap();
+    g.each_edge_from(u, |e| {
+      if dist[e.to()].is_none_or(|&d2| d2 > d1 + 1) {
+        dist[e.to()] = Some(d1 + 1);
+        queue.push_back(e.to());
+      }
+    });
+  }
+  dist
 }
