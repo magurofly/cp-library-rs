@@ -2,7 +2,7 @@ use std::ops::{Deref};
 
 use super::*;
 
-pub trait VecGraph<E, Ed: Edge<E>>: Graph<E, Edge = Ed> + Deref<Target = [Vec<Ed>]> {
+pub trait VecGraph<E, Ed: Edge<E>>: Graph<E, Edge = Ed> + GraphMut<E> + Deref<Target = [Vec<Ed>]> {
 }
 
 impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
@@ -31,6 +31,6 @@ impl<E, Ed: Edge<E>> GraphMut<E> for Vec<Vec<Ed>> {
   }
 
   fn add_arc(&mut self, from: usize, to: usize, weight: E) {
-    self[from].push(Ed::new(to, weight));
+    self[from].push(Ed::new_edge(to, weight));
   }
 }

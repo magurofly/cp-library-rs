@@ -35,32 +35,32 @@ impl EdgeData<()> for (usize, usize) {
   }
 }
 
-pub struct EdgeInfo<'a, E, Ed: Edge<E>> {
+pub struct EdgeInfo<'a, E> {
   from: usize,
-  edge: &'a Ed,
-  phantom: PhantomData<E>,
+  to: usize,
+  weight: &'a E,
 }
 
-impl<'a, E, Ed: Edge<E>> EdgeInfo<'a, E, Ed> {
-  pub fn new(from: usize, edge: &'a Ed) -> Self {
+impl<'a, E> EdgeInfo<'a, E> {
+  pub fn new(from: usize, to: usize, weight: &'a E) -> Self {
     Self {
       from,
-      edge,
-      phantom: PhantomData,
+      to,
+      weight,
     }
   }
 }
 
-impl<'a, E, Ed: Edge<E>> EdgeData<E> for EdgeInfo<'a, E, Ed> {
+impl<'a, E> EdgeData<E> for EdgeInfo<'a, E> {
   fn from(&self) -> usize {
     self.from
   }
 
   fn to(&self) -> usize {
-    self.edge.to()
+    self.to
   }
 
   fn weight(&self) -> &E {
-    self.edge.weight()
+    self.weight
   }
 }

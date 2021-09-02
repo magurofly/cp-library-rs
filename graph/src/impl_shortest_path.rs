@@ -14,7 +14,7 @@ pub fn dijkstra<E, G: Graph<E>, C: Copy + std::ops::Add<Output = C> + Default + 
   while let Some((d1, u)) = heap.pop() {
     if dists[u].unwrap() != d1 { continue }
     g.each_edge_from(u, |e| {
-      if let Some(d2) = (cost)(e, d1) {
+      if let Some(d2) = (cost)(&e, d1) {
         if dists[e.to()].map(|d3| d3 > d2 ).unwrap_or(true) {
           dists[e.to()] = Some(d2);
           heap.push((d2, e.to()));

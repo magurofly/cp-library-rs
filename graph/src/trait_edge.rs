@@ -1,11 +1,11 @@
 pub trait Edge<E> {
-  fn new(to: usize, weight: E) -> Self;
+  fn new_edge(to: usize, weight: E) -> Self;
   fn to(&self) -> usize;
   fn weight(&self) -> &E;
 }
 
 impl<E> Edge<E> for (usize, E) {
-  fn new(to: usize, weight: E) -> Self {
+  fn new_edge(to: usize, weight: E) -> Self {
     (to, weight)
   }
 
@@ -19,7 +19,7 @@ impl<E> Edge<E> for (usize, E) {
 }
 
 impl Edge<()> for usize {
-  fn new(to: usize, _weight: ()) -> Self {
+  fn new_edge(to: usize, _weight: ()) -> Self {
     to
   }
 

@@ -1,11 +1,11 @@
-pub mod graph_trait;
-pub use graph_trait::*;
+pub mod trait_graph;
+pub use trait_graph::*;
 
-pub mod graph_mut_trait;
-pub use graph_mut_trait::*;
+pub mod trait_graph_mut;
+pub use trait_graph_mut::*;
 
-pub mod edge_trait;
-pub use edge_trait::*;
+pub mod trait_edge;
+pub use trait_edge::*;
 
 pub mod edge_data;
 pub use edge_data::*;
@@ -13,11 +13,15 @@ pub use edge_data::*;
 pub mod enums;
 pub use enums::*;
 
-pub mod vec_graph;
-pub use vec_graph::*;
+pub mod graph_empty;
+pub use graph_empty::*;
 
-pub mod empty_graph;
-pub use empty_graph::*;
+pub mod graph_vec;
+pub use graph_vec::*;
 
-pub mod shortest_path;
-pub mod dfs_impl;
+pub mod graph_mat;
+pub use graph_mat::*;
+
+pub mod impl_shortest_path;
+pub mod impl_dfs;
+pub mod impl_mst;
