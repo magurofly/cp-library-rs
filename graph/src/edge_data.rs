@@ -1,6 +1,3 @@
-use std::marker::PhantomData;
-use super::*;
-
 pub trait EdgeData<E> {
   fn from(&self) -> usize;
   fn to(&self) -> usize;
