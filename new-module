@@ -1,0 +1,26 @@
+#!/usr/bin/env ruby
+# coding: utf-8
+
+if ARGV.empty?
+  puts "Usage: ruby #{$0} CRATE_NAME"
+  exit
+end
+
+NAME = ARGV.shift
+Dir.mkdir NAME
+Dir.chdir NAME
+
+File.open("Cargo.toml", "w") do |file|
+  file.puts <<-EOF
+[package]
+name = "#{NAME}"
+version = "0.1.0"
+authors = []
+edition = "2018"
+license = "CC0-1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+  EOF
+end
