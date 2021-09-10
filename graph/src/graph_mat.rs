@@ -12,6 +12,7 @@ impl<E: Clone> Graph<E> for MatGraph<E> {
   
   fn m(&self) -> usize { self.m }
 
+  /// O(V)
   fn each_edge_from(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
     for v in 0 .. self.mat[from].len() {
       if let Some(weight) = self.mat[from][v].as_ref() {
