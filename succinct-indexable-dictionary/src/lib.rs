@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use bits::*;
 
 /// 完備辞書（簡潔ビットベクトル）
 /// ref: https://misteer.hatenablog.com/entry/bit-vector
@@ -10,7 +11,7 @@ pub struct SuccinctIndexableDictionary {
 
 impl SuccinctIndexableDictionary {
   pub fn chunk_size() -> usize { 256 }
-  pub fn block_size() -> usize { 8 }
+  pub fn block_size() -> usize { u8::width() }
 
   pub fn from_vec(len: usize, mut bit: Vec<u8>) -> Self {
     let num_chunks = (len + Self::chunk_size() - 1) / Self::chunk_size();
@@ -41,48 +42,73 @@ impl SuccinctIndexableDictionary {
     self.helper.borrow_mut().changed = true;
     let bi = idx / Self::block_size();
     let bo = idx % Self::block_size();
-    match value {
-      true => {
-        self.bit[bi] |= 1 << bo;
-      }
-      false => {
-        self.bit[bi] &= !(1 << bo);
-      }
-    }
+    self.bit[bi].bit_set(bo, value);
   }
 
   pub fn get(&self, idx: usize) -> bool {
     let bi = idx / Self::block_size();
     let bo = idx % Self::block_size();
-    ((self.bit[bi] >> bo) & 1) == 1
+    self.bit[bi].bit_at(bo)
   }
 
   // popCount(num) = num.count_ones()
 
   /// [0, idx) にある 1 の数を返す
-  pub fn rank(&self, idx: usize) -> usize {
+  pub fn rank1(&self, idx: usize) -> usize {
     self.check();
     let helper = self.helper.borrow();
     let ci = idx / Self::chunk_size();
     let bi = idx % Self::chunk_size() / Self::block_size();
     let bo = idx % Self::block_size();
-    let masked = self.bit[ci * helper.num_blocks + bi] & ((1 << bo) - 1);
-    helper.chunks[ci] as usize + helper.blocks[ci][bi] as usize + masked.count_ones() as usize
+    let masked = self.bit[ci * helper.num_blocks + bi] & u8::full(bo);
+    helper.chunks[ci] as usize + helper.blocks[ci][bi] as usize + masked.popcount()
   }
 
-  /// rank(idx) = num となる最小の idx を返す
-  pub fn select(&self, num: usize) -> Option<usize> {
+  /// [0, idx) にある 0 の数を返す
+  pub fn rank0(&self, idx: usize) -> usize {
+    idx - self.rank1(idx)
+  }
+
+  /// [l, r) にある 1 の数を返す
+  pub fn rank1_in(&self, l: usize, r: usize) -> usize {
+    self.rank1(r) - self.rank1(l)
+  }
+
+  /// [l, r) にある 0 の数を返す
+  pub fn rank0_in(&self, l: usize, r: usize) -> usize {
+    self.rank0(r) - self.rank0(l)
+  }
+
+  /// num 番目の 1 の位置を返す
+  pub fn select1(&self, num: usize) -> Option<usize> {
     if num == 0 {
       return Some(0);
     }
-    if self.rank(self.len()) < num {
+    if self.rank1(self.len()) < num {
+      return None;
+    }
+    let mut wa = 0;
+    let mut ac = self.len();
+    while wa + 1 < ac {
+      let wj = (ac + wa) / 2;
+      *(if self.rank1(wj) >= num { &mut ac } else { &mut wa }) = wj;
+    }
+    Some(ac)
+  }
+
+  /// num 番目の 0 の位置を返す
+  pub fn select0(&self, num: usize) -> Option<usize> {
+    if num == 0 {
+      return Some(0);
+    }
+    if self.rank0(self.len()) < num {
       return None;
     }
     let mut wa = 0;
     let mut ac = self.len();
     while wa + 1 < ac {
       let wj = (ac + wa) >> 1;
-      *(if self.rank(wj) >= num { &mut ac } else { &mut wa }) = wj;
+      *(if self.rank0(wj) >= num { &mut ac } else { &mut wa }) = wj;
     }
     Some(ac)
   }
@@ -95,9 +121,9 @@ impl SuccinctIndexableDictionary {
     for i in 0 .. helper.num_chunks {
       helper.blocks[i][0] = 0;
       for j in 0 .. helper.num_blocks - 1 {
-        helper.blocks[i][j + 1] = helper.blocks[i][j] + self.bit[i * helper.num_blocks + j].count_ones() as u8;
+        helper.blocks[i][j + 1] = helper.blocks[i][j] + self.bit[i * helper.num_blocks + j].popcount() as u8;
       }
-      helper.chunks[i + 1] = helper.chunks[i] + helper.blocks[i][helper.num_blocks - 1] as u16 + self.bit[(i + 1) * helper.num_blocks - 1].count_ones() as u16;
+      helper.chunks[i + 1] = helper.chunks[i] + helper.blocks[i][helper.num_blocks - 1] as u16 + self.bit[(i + 1) * helper.num_blocks - 1].popcount() as u16;
     }
   }
 
@@ -146,7 +172,7 @@ pub mod test {
     let dic = SuccinctIndexableDictionary::from(bits.clone());
     for i in 0 .. bits.len() {
       let count = (0 .. i).filter(|&j| bits[j]).count();
-      assert_eq!(count, dic.rank(i));
+      assert_eq!(count, dic.rank1(i));
     }
   }
 
@@ -155,8 +181,8 @@ pub mod test {
     let bits = vec![false, true, true, false, false, true];
     let dic = SuccinctIndexableDictionary::from(bits.clone());
     for i in 0 .. bits.len() {
-      let idx = (0 ..= bits.len()).find(|&j| dic.rank(j) == i);
-      assert_eq!(idx, dic.select(i));
+      let idx = (0 ..= bits.len()).find(|&j| dic.rank1(j) == i);
+      assert_eq!(idx, dic.select1(i));
     }
   }
 }

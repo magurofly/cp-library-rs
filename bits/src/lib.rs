@@ -2,26 +2,35 @@ use std::ops::*;
 
 pub trait Bits: Sized + Clone + Copy + PartialEq + Eq + Default + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + BitAnd<Output = Self> + BitOr<Output = Self> + BitXor<Output = Self> + Not<Output = Self> + Shl<u32, Output = Self> + Shr<u32, Output = Self> {
   fn width() -> usize;
-  fn flag(idx: usize) -> Self;
+  fn top(idx: usize) -> Self;
+  fn full(count: usize) -> Self;
   fn none() -> Self;
   fn bit_length(self) -> usize;
+  fn clz(self) -> usize;
+  fn ctz(self) -> usize;
+  fn popcount(self) -> usize;
 
   fn bit_at(self, idx: usize) -> bool {
     assert!(idx < Self::width());
-    (self & Self::flag(idx)) != Self::none()
+    (self & Self::top(idx)) != Self::none()
   }
-  fn bit_on(self, idx: usize) -> Self { self | Self::flag(idx) }
-  fn bit_off(self, idx: usize) -> Self { self & !Self::flag(idx) }
-  fn bit_flip(self, idx: usize) -> Self { self ^ Self::flag(idx) }
+  fn bit_on(&mut self, idx: usize) { *self = *self | Self::top(idx); }
+  fn bit_off(&mut self, idx: usize) { *self = *self & !Self::top(idx); }
+  fn bit_flip(&mut self, idx: usize) { *self = *self ^ Self::top(idx); }
+  fn bit_set(&mut self, idx: usize, val: bool) { if val { self.bit_on(idx); } else { self.bit_off(idx); } }
 }
 
 macro_rules! impl_int {
   ($t:ty, $w:expr) => {
     impl Bits for $t {
       fn width() -> usize { $w }
-      fn flag(idx: usize) -> Self { 1 << idx as u32 }
+      fn top(idx: usize) -> Self { 1 << idx as u32 }
+      fn full(count: usize) -> Self { (1 << count) - 1 }
       fn none() -> Self { 0 }
-      fn bit_length(self) -> usize { if self == 0 { 0 } else { $w - (self - 1).leading_zeros() as usize } }
+      fn clz(self) -> usize { self.leading_zeros() as usize }
+      fn ctz(self) -> usize { self.trailing_zeros() as usize }
+      fn popcount(self) -> usize { self.count_ones() as usize }
+      fn bit_length(self) -> usize { if self == 0 { 0 } else { $w - (self - 1).clz() } }
     }
   };
 }
