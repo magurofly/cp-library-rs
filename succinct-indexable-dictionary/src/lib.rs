@@ -2,13 +2,13 @@ use std::cell::RefCell;
 
 /// 完備辞書（簡潔ビットベクトル）
 /// ref: https://misteer.hatenablog.com/entry/bit-vector
-pub struct SuccientIndexableDictionary {
+pub struct SuccinctIndexableDictionary {
   len: usize,
   bit: Vec<u8>,
-  helper: RefCell<SuccientIndexableDictionaryHelper>,
+  helper: RefCell<SuccinctIndexableDictionaryHelper>,
 }
 
-impl SuccientIndexableDictionary {
+impl SuccinctIndexableDictionary {
   pub fn chunk_size() -> usize { 256 }
   pub fn block_size() -> usize { 8 }
 
@@ -19,7 +19,7 @@ impl SuccientIndexableDictionary {
     Self {
       len,
       bit,
-      helper: RefCell::new(SuccientIndexableDictionaryHelper {
+      helper: RefCell::new(SuccinctIndexableDictionaryHelper {
         num_chunks,
         num_blocks,
         chunks: vec![0; num_chunks + 1],
@@ -108,9 +108,9 @@ impl SuccientIndexableDictionary {
   }
 }
 
-impl From<Vec<bool>> for SuccientIndexableDictionary {
+impl From<Vec<bool>> for SuccinctIndexableDictionary {
   fn from(array: Vec<bool>) -> Self {
-    let mut dic = SuccientIndexableDictionary::new(array.len());
+    let mut dic = SuccinctIndexableDictionary::new(array.len());
     for i in 0 .. array.len() {
       dic.set(i, array[i]);
     }
@@ -118,7 +118,7 @@ impl From<Vec<bool>> for SuccientIndexableDictionary {
   }
 }
 
-struct SuccientIndexableDictionaryHelper {
+struct SuccinctIndexableDictionaryHelper {
   pub num_chunks: usize,
   pub num_blocks: usize,
   pub chunks: Vec<u16>,
@@ -128,13 +128,13 @@ struct SuccientIndexableDictionaryHelper {
 
 #[cfg(test)]
 pub mod test {
-    use crate::SuccientIndexableDictionary;
+    use crate::SuccinctIndexableDictionary;
 
 
   #[test]
   fn access() {
     let bits = vec![false, true, true, false, false];
-    let dic = SuccientIndexableDictionary::from(bits.clone());
+    let dic = SuccinctIndexableDictionary::from(bits.clone());
     for i in 0 .. bits.len() {
       assert_eq!(bits[i], dic.get(i));
     }
@@ -143,7 +143,7 @@ pub mod test {
   #[test]
   fn rank() {
     let bits = vec![false, true, true, false, false, true];
-    let dic = SuccientIndexableDictionary::from(bits.clone());
+    let dic = SuccinctIndexableDictionary::from(bits.clone());
     for i in 0 .. bits.len() {
       let count = (0 .. i).filter(|&j| bits[j]).count();
       assert_eq!(count, dic.rank(i));
@@ -153,7 +153,7 @@ pub mod test {
   #[test]
   fn select() {
     let bits = vec![false, true, true, false, false, true];
-    let dic = SuccientIndexableDictionary::from(bits.clone());
+    let dic = SuccinctIndexableDictionary::from(bits.clone());
     for i in 0 .. bits.len() {
       let idx = (0 ..= bits.len()).find(|&j| dic.rank(j) == i);
       assert_eq!(idx, dic.select(i));
