@@ -4,6 +4,10 @@ pub trait Edge<E> {
   fn weight(&self) -> &E;
 }
 
+pub trait EdgeMut<E>: Edge<E> {
+  fn weight_mut(&mut self) -> &mut E;
+}
+
 impl<E> Edge<E> for (usize, E) {
   fn new_edge(to: usize, weight: E) -> Self {
     (to, weight)
@@ -15,6 +19,12 @@ impl<E> Edge<E> for (usize, E) {
 
   fn weight(&self) -> &E {
     &self.1
+  }
+}
+
+impl<E> EdgeMut<E> for (usize, E) {
+  fn weight_mut(&mut self) -> &mut E {
+    &mut self.1
   }
 }
 

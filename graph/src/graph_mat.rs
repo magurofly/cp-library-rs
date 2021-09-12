@@ -12,6 +12,9 @@ impl<E: Clone> Graph<E> for MatGraph<E> {
   
   fn m(&self) -> usize { self.m }
 
+  /// O(1)
+  fn edge_weight(&self, from: usize, to: usize) -> Option<&E> { self.mat[from][to].as_ref() }
+
   /// O(V)
   fn each_edge_from(&self, from: usize, mut f: impl FnMut(&Self::Edge)) {
     for v in 0 .. self.mat[from].len() {
@@ -29,5 +32,15 @@ impl<E: Clone> GraphMut<E> for MatGraph<E> {
 
   fn add_arc(&mut self, from: usize, to: usize, weight: E) {
     self.mat[from][to] = Some(weight);
+  }
+
+  /// O(1)
+  fn edge_weight_mut(&mut self, from: usize, to: usize) -> Option<&mut E> { self.mat[from][to].as_mut() }
+
+  /// O(V)
+  fn clear_edges(&mut self, from: usize) {
+    for to in 0 .. self.n() {
+      self.mat[from][to] = None;
+    }
   }
 }

@@ -21,4 +21,8 @@ pub trait GraphMut<E>: Graph<E> {
       self.add_edge(edge.from(), edge.to(), edge.weight().clone());
     }
   }
+
+  fn edge_weight_mut(&mut self, from: usize, to: usize) -> Option<&mut E>;
+
+  fn clear_edges(&mut self, from: usize);
 }
