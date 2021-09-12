@@ -71,7 +71,7 @@ pub trait MyOpt<T> : IntoIterator<Item = T> {
     self.is_present() && (f)(self.get())
   }
   fn set_max(&mut self, other: T) -> bool where T: Ord {
-    if *self.get() < other {
+    if !self.is_present() || *self.get() < other {
       self.set(other);
       true
     } else {
@@ -79,7 +79,7 @@ pub trait MyOpt<T> : IntoIterator<Item = T> {
     }
   }
   fn set_min(&mut self, other: T) -> bool where T: Ord {
-    if *self.get() > other {
+    if !self.is_present() || *self.get() > other {
       self.set(other);
       true
     } else {
