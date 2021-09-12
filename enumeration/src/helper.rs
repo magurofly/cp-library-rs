@@ -1,7 +1,9 @@
-use std::{cell::RefCell, marker::PhantomData, rc::Rc};
+use std::{cell::RefCell, collections::*, marker::PhantomData, rc::*};
 use number::*;
 use super::*;
 use acl_modint::*;
+
+thread_local!(pub static ENUMERATION_CACHE: RefCell<HashMap<u32, Weak<EnumerationMod<i64>>>> = RefCell::new(HashMap::new()));
 
 pub struct EnumerationMod<N> {
   f: RefCell<FactorialInvMod<N>>,
@@ -170,7 +172,20 @@ pub struct Enumeration<T> {
 
 impl<T: ModIntBase> Enumeration<T> {
   pub fn new() -> Self {
-    Self { f: Rc::new(EnumerationMod::new(T::modulus() as i64)), phantom: PhantomData, }
+    let f = Self::request().unwrap_or_else(|| {
+      let f = Rc::new(EnumerationMod::new(T::modulus() as i64));
+      Self::register(&f);
+      f
+    });
+    Self { f, phantom: PhantomData, }
+  }
+
+  fn register(f: &Rc<EnumerationMod<i64>>) {
+    ENUMERATION_CACHE.with(|h| h.borrow_mut().insert(T::modulus(), Rc::downgrade(f)));
+  }
+
+  fn request() -> Option<Rc<EnumerationMod<i64>>> {
+    ENUMERATION_CACHE.with(|m| m.borrow().get(&T::modulus()).and_then(Weak::upgrade))
   }
 
   pub fn inner(&self) -> &EnumerationMod<i64> {

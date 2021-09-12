@@ -46,6 +46,21 @@ pub trait Int: PrimInt + IntLike {
     (self + other - Self::one()) / other
   }
 
+  fn digits(self) -> Vec<Self> where Self: ToString {
+    let mut v = Vec::new();
+    let mut n = self;
+    while n.is_positive() {
+      let r = n % 10.cast();
+      v.push(r);
+      n = n / 10.cast();
+    }
+    if v.is_empty() {
+      v.push(Self::zero());
+    }
+    v.reverse();
+    v
+  }
+
   fn pow_mod<E: Int>(self, mut e: E, m: Self) -> Self {
     let mut x = self % m;
     if e.is_negative() {
@@ -361,6 +376,26 @@ pub trait Int: PrimInt + IntLike {
       (f)(i);
       i = i.sub1();
     }
+  }
+
+  /// 約数を昇順に全列挙
+  fn divisors(self) -> Vec<Self> {
+    let mut divisors = vec![];
+    let mut divisors2 = vec![];
+    let mut k = Self::one();
+    while k * k < self {
+      if (self % k).is_zero() {
+        divisors.push(k);
+        divisors2.push(self / k);
+      }
+      k = k.add1();
+    }
+    if k * k == self {
+      divisors.push(k);
+    }
+    divisors2.reverse();
+    divisors.append(&mut divisors2);
+    divisors
   }
 }
 

@@ -70,6 +70,26 @@ impl<T, C> FPS<T, C> {
     a.reverse();
     Self::from(a)
   }
+
+  pub fn each(&self, mut f: impl FnMut(&T, usize)) {
+    for i in 0 .. self.deg() {
+      (f)(&self[i], i);
+    }
+  }
+
+  pub fn each_mut(&mut self, mut f: impl FnMut(&mut T, usize)) {
+    for i in 0 .. self.deg() {
+      (f)(&mut self[i], i);
+    }
+  }
+
+  pub fn map(&self, mut f: impl FnMut(&T, usize) -> T) -> Self {
+    let mut a = Vec::with_capacity(self.deg());
+    for i in 0 .. self.deg() {
+      a.push((f)(&self[i], i));
+    }
+    Self::from(a)
+  }
 }
 
 impl<T, C> Deref for FPS<T, C> {

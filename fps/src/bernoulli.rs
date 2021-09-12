@@ -1,18 +1,19 @@
 use super::*;
-use number::*;
+use enumeration::Enumeration;
 use acl_modint::*;
 use fft::*;
 
 pub fn bernoulli<T: ModIntBase, C: Clone + Convolution<T>>(n: usize) -> Vec<T> {
   let mut x = FPS::<T, C>::with_deg(n + 1);
-  let f = FactorialInvMod::new((n + 1) as i64, T::modulus() as i64);
+  let f = Enumeration::<T>::new();
+  //TODO: replace with thread-local Enumeration struct
   for i in 0 ..= n {
-    x[i] = T::from(f.fact_inv(i + 1));
+    x[i] = f.fact_inv(i + 1);
   }
 
   let mut y = x.inv();
   for i in 0 ..= n {
-    y[i] *= T::from(f.fact(i));
+    y[i] *= f.fact(i);
   }
 
   let y: Vec<_> = y.into();
