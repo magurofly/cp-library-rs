@@ -70,7 +70,7 @@ pub trait MyOpt<T> : IntoIterator<Item = T> {
   fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
     self.is_present() && (f)(self.get())
   }
-  fn insert_max(&mut self, other: T) -> bool where T: Ord {
+  fn set_max(&mut self, other: T) -> bool where T: Ord {
     if *self.get() < other {
       self.set(other);
       true
@@ -78,7 +78,7 @@ pub trait MyOpt<T> : IntoIterator<Item = T> {
       false
     }
   }
-  fn insert_min(&mut self, other: T) -> bool where T: Ord {
+  fn set_min(&mut self, other: T) -> bool where T: Ord {
     if *self.get() > other {
       self.set(other);
       true
