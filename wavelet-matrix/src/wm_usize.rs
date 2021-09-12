@@ -18,17 +18,21 @@ impl WaveletMatrixUsize {
     let height = sigma.bit_length();
     let mut dic = Vec::with_capacity(height);
     let mut mid = Vec::with_capacity(height);
-    for i in 0 .. height {
-      let mut sid = SuccinctIndexableDictionary::new(len);
-      for j in 0 .. len {
-        sid.set(j, a[j].bit_at(height - i - 1));
+    for level in (0 .. height).rev() {
+      let mut sid = SuccinctIndexableDictionary::new(len + 1);
+      for i in 0 .. len {
+        sid.set(i, a[i].bit_at(level));
       }
-
       dic.push(sid);
-
-      partition(&mut a, &|&c| !c.bit_at(height - i - 1));
-      mid.push(a.partition_point(|&c| !c.bit_at(height - i - 1)));
+      
+      // level ビット目が 0 のものを左に、 1 のものを右に移動させる
+      partition(&mut a, &|&x| !x.bit_at(level));
+      mid.push(a.partition_point(|&x| !x.bit_at(level)));
     }
+
+    // // 逆順にpushしたので
+    dic.reverse();
+    mid.reverse();
 
     Self {
       len,
@@ -51,7 +55,7 @@ impl WaveletMatrixUsize {
     let mut ret = 0;
     for level in (0 .. self.height).rev() {
       let f = self.dic[level].get(idx);
-      ret.bit_set(idx, f);
+      ret.bit_set(level, f);
       idx = self.rnk(f, idx, level);
     }
     ret
@@ -187,8 +191,9 @@ pub mod test {
 
   #[test]
   fn access() {
-    let a = vec![3, 1, 4, 1, 5, 9, 2, 6, 4, 8];
-    let wm = WaveletMatrixUsize::new(a.clone(), 9);
+    // let a = vec![3, 1, 4, 1, 5, 9, 2, 6, 4, 8];
+    let a = vec![11, 0, 15, 6, 5, 2, 7, 12, 11, 0, 12, 12, 13, 4, 6, 13, 1, 11, 6, 1, 7, 10, 2, 7, 14, 11, 1, 7, 5, 4, 14, 6];
+    let wm = WaveletMatrixUsize::new(a.clone(), a.iter().copied().max().unwrap() + 1);
     let b = (0 .. a.len()).map(|i| wm.access(i)).collect::<Vec<_>>();
     assert_eq!(a, b);
   }
