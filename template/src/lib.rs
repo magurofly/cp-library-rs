@@ -60,7 +60,7 @@ impl<T: Sized + PartialOrd> MyOrd for T {}
 
 pub trait MyOpt<T> : IntoIterator<Item = T> {
   fn is_present(&self) -> bool;
-  fn pop(self) -> T;
+  fn pop(&mut self) -> T;
   fn get(&self) -> &T;
   fn get_mut(&mut self) -> &mut T;
   fn set(&mut self, value: T);
@@ -89,7 +89,7 @@ pub trait MyOpt<T> : IntoIterator<Item = T> {
 }
 impl<T> MyOpt<T> for Option<T> {
   fn is_present(&self) -> bool { self.is_some() }
-  fn pop(self) -> T { Option::unwrap(self) }
+  fn pop(&mut self) -> T { self.take().unwrap() }
   fn get(&self) -> &T { self.as_ref().unwrap() }
   fn get_mut(&mut self) -> &mut T { self.as_mut().unwrap() }
   fn set(&mut self, value: T) { *self = Some(value); }
