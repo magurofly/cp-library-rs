@@ -62,15 +62,31 @@ pub trait MyOpt<T> : IntoIterator<Item = T> {
   fn is_present(&self) -> bool;
   fn pop(self) -> T;
   fn get(&self) -> &T;
+  fn get_mut(&mut self) -> &mut T;
+  fn set(&mut self, value: T);
   fn is_none_or(&self, f: impl FnOnce(&T) -> bool) -> bool {
     !self.is_present() || (f)(self.get())
   }
   fn is_some_and(&self, f: impl FnOnce(&T) -> bool) -> bool {
     self.is_present() && (f)(self.get())
   }
+  fn insert_max(&mut self, other: T) -> &mut T where T: Ord {
+    if *self.get() < other {
+      self.set(other);
+    }
+    self.get_mut()
+  }
+  fn insert_min(&mut self, other: T) -> &mut T where T: Ord {
+    if *self.get() > other {
+      self.set(other);
+    }
+    self.get_mut()
+  }
 }
 impl<T> MyOpt<T> for Option<T> {
   fn is_present(&self) -> bool { self.is_some() }
   fn pop(self) -> T { Option::unwrap(self) }
   fn get(&self) -> &T { self.as_ref().unwrap() }
+  fn get_mut(&mut self) -> &mut T { self.as_mut().unwrap() }
+  fn set(&mut self, value: T) { *self = Some(value); }
 }
