@@ -50,6 +50,13 @@ pub trait MyIntoIter : IntoIterator where Self: Sized {
 }
 impl<T> MyIntoIter for T where T: IntoIterator {}
 
+pub trait MySlice<T> : AsRef<[T]> {
+  fn citer(&self) -> Cloned<std::slice::Iter<T>> where T: Clone { self.as_ref().iter().cloned() }
+  fn max(&self) -> T where T: Clone + Ord { self.citer().max().unwrap() }
+  fn min(&self) -> T where T: Clone + Ord { self.citer().max().unwrap() }
+}
+impl<T> MySlice<T> for [T] {}
+
 pub trait MyOrd : PartialOrd + Sized {
   // fn max(self, other: Self) -> Self { if &self < &other { other } else { self } }
   // fn min(self, other: Self) -> Self { if &self > &other { other } else { self } }
