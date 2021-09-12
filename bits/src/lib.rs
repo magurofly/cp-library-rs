@@ -23,14 +23,14 @@ pub trait Bits: Sized + Clone + Copy + PartialEq + Eq + Default + Add<Output = S
 macro_rules! impl_int {
   ($t:ty, $w:expr) => {
     impl Bits for $t {
-      fn width() -> usize { $w }
+      fn width() -> usize { $w as usize }
       fn top(idx: usize) -> Self { 1 << idx as u32 }
-      fn full(count: usize) -> Self { (1 << count) - 1 }
+      fn full(count: usize) -> Self { if count == Self::width() { !0 } else { (1 as $t << count as u32).overflowing_sub(1).0 } }
       fn none() -> Self { 0 }
       fn clz(self) -> usize { self.leading_zeros() as usize }
       fn ctz(self) -> usize { self.trailing_zeros() as usize }
       fn popcount(self) -> usize { self.count_ones() as usize }
-      fn bit_length(self) -> usize { if self == 0 { 0 } else { $w - (self - 1).clz() } }
+      fn bit_length(self) -> usize { if self == 0 { 0 } else { Self::width() - (self - 1).clz() } }
     }
   };
 }
@@ -45,3 +45,5 @@ impl_int!(u64, 64);
 impl_int!(i64, 64);
 impl_int!(u128, 128);
 impl_int!(i128, 128);
+impl_int!(usize, 0usize.leading_zeros());
+impl_int!(isize, 0isize.leading_zeros());

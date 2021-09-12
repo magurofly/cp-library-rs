@@ -15,7 +15,7 @@ File.open("Cargo.toml", "w") do |file|
 [package]
 name = "#{NAME}"
 version = "0.1.0"
-authors = []
+authors = ["magurofly <fishfishfish@hash.fyi>"]
 edition = "2018"
 license = "CC0-1.0"
 
