@@ -117,8 +117,6 @@ pub type RangeAffineRangeSum<T> = LazySegHelper<RangeSum<T>, RangeMapAffine<T>>;
 
 #[cfg(test)]
 pub mod test {
-  use super::*;
-
   #[test]
   fn test_range_affine_range_sum() {
     // let seg = RangeAffineRangeSum::<i64>::new_lazysegtree(10);

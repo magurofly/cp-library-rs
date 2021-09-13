@@ -26,8 +26,19 @@ impl<T: Clone + Ord> Median<T> {
     self.left.len() + self.right.len()
   }
 
-  /// 中央値を取得する
-  pub fn median(&self) -> Option<&T> {
+  /// 小さい方の中央値を取得する
+  /// O(log N)
+  pub fn median_low(&self) -> Option<&T> {
+    if self.left.len() < self.right.len() {
+      self.right.min()
+    } else {
+      self.left.max()
+    }
+  }
+
+  /// 大きい方の中央値を取得する
+  /// O(log N)
+  pub fn median_high(&self) -> Option<&T> {
     self.right.min()
   }
 
@@ -65,5 +76,25 @@ impl<T: Clone + Ord> Median<T> {
       self.right.insert(self.left.pop_max().unwrap());
     }
     true
+  }
+}
+
+#[cfg(test)]
+pub mod test {
+  use super::*;
+
+  #[test]
+  fn median() {
+    let mut m = Median::new();
+    let a = vec![1, 5, 6, 5, 3, 6, 7, 8, 3, 8, 1, 3, 5, 2, 5, 8, 3, 4, 1, 5];
+    let medians1 = vec![1, 5, 5, 5, 5, 5, 5, 6, 5, 6, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5];
+    let mut medians2 = vec![];
+
+    for &x in &a {
+      m.insert(x);
+      medians2.push(*m.median_high().unwrap());
+    }
+
+    assert_eq!(medians1, medians2);
   }
 }
