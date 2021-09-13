@@ -121,6 +121,6 @@ pub mod test {
 
   #[test]
   fn test_range_affine_range_sum() {
-    let seg = RangeAffineRangeSum::<i64>::new_lazysegtree(10);
+    // let seg = RangeAffineRangeSum::<i64>::new_lazysegtree(10);
   }
 }
