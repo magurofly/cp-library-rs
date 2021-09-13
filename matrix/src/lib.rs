@@ -28,6 +28,16 @@ impl<T> Matrix<T> {
     }
     Self { rows: n, cols: n, mat }
   }
+
+  /// 転置した行列を返す
+  pub fn transpose(&self) -> Self where T: Clone {
+    Matrix::from((0 .. self.cols).map(|j| (0 .. self.rows).map(|i| self.mat[i][j].clone()).collect::<Vec<_>>()).collect::<Vec<_>>())
+  }
+
+  /// 要素を加工する
+  pub fn map<U>(&self, mut f: impl FnMut(&T) -> U) -> Matrix<U> {
+    Matrix::from((0 .. self.rows).map(|i| (0 .. self.cols).map(|j| (f)(&self.mat[i][j])).collect::<Vec<_>>()).collect::<Vec<_>>())
+  }
 }
 
 impl<T> IntoIterator for Matrix<T> {
@@ -167,10 +177,10 @@ impl<T: Add<Output = T> + Mul<Output = T> + Clone + Default> Mul for &Matrix<T> 
     let rows = self.rows();
     let cols = self.cols();
     let mut mat = vec![vec![T::default(); cols]; rows];
-    for k in 0 .. cols {
-      for i in 0 .. rows {
+    for i in 0 .. rows {
+      for k in 0 .. cols {
         for j in 0 .. other.cols() {
-          mat[i][j] = self[i][k].clone() * other[k][j].clone();
+          mat[i][j] = mat[i][j].clone() + self[i][k].clone() * other[k][j].clone();
         }
       }
     }

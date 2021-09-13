@@ -10,6 +10,8 @@ impl<E> Graph<E> for () {
   fn n(&self) -> usize { 0 }
   fn m(&self) -> usize { 0 }
 
+  fn edge_weight(&self, _from: usize, _to: usize) -> Option<&E> { None }
+
   fn each_edge_from(&self, _from: usize, _f: impl FnMut(&Self::Edge)) {}
 }
 
@@ -17,6 +19,8 @@ impl<E> GraphMut<E> for () {
   fn new_graph(_n: usize) -> () { () }
   fn add_arc(&mut self, _from: usize, _to: usize, _weight: E) {}
   fn add_edge(&mut self, _from: usize, _to: usize, _weight: E) {}
+  fn edge_weight_mut(&mut self, _from: usize, _to: usize) -> Option<&mut E> { None }
+  fn clear_edges(&mut self, _from: usize) {}
 }
 
 impl<E> EmptyGraph<E> for () {}

@@ -22,9 +22,20 @@ impl<E, Ed: Edge<E>> Graph<E> for Vec<Vec<Ed>> {
   fn m(&self) -> usize {
     self.iter().map(|edges| edges.len()).sum()
   }
+
+  /// amortized O(E/V)
+  fn edge_weight(&self, from: usize, to: usize) -> Option<&E> {
+    let mut r = None;
+    for e in &self[from] {
+      if e.to() == to {
+        r = Some(e.weight());
+      }
+    }
+    r
+  }
 }
 
-impl<E, Ed: Edge<E>> GraphMut<E> for Vec<Vec<Ed>> {
+impl<E, Ed: EdgeMut<E>> GraphMut<E> for Vec<Vec<Ed>> {
   fn new_graph(n: usize) -> Self {
     let mut g = Vec::with_capacity(n);
     g.resize_with(n, Vec::new);
@@ -33,6 +44,21 @@ impl<E, Ed: Edge<E>> GraphMut<E> for Vec<Vec<Ed>> {
 
   fn add_arc(&mut self, from: usize, to: usize, weight: E) {
     self[from].push(Ed::new_edge(to, weight));
+  }
+
+  /// amortized O(E/V)
+  fn edge_weight_mut(&mut self, from: usize, to: usize) -> Option<&mut E> {
+    let mut r = None;
+    for e in &mut self[from] {
+      if e.to() == to {
+        r = Some(e.weight_mut());
+      }
+    }
+    r
+  }
+
+  fn clear_edges(&mut self, from: usize) {
+    self[from].clear();
   }
 }
 

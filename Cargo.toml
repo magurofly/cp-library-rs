@@ -8,13 +8,24 @@ license = "CC0-1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+bits = { path = "bits" }
 enumeration = { path = "enumeration" }
+fft = { path = "fft" }
+fps = { path = "fps" }
 geometry = { path = "geometry" }
 graph = { path = "graph" }
 matrix = { path = "matrix" }
 number = { path = "number" }
+ranges = { path = "ranges" }
 structs = { path = "structs" }
+succinct-indexable-dictionary = { path = "succinct-indexable-dictionary" }
 template = { path = "template" }
 unionfind = { path = "unionfind" }
-fps = { path = "fps" }
-fft = { path = "fft" }
+value-compression = { path = "value-compression" }
+wavelet-matrix = { path = "wavelet-matrix" }
+
+[package.metadata.docs.rs]
+rustdoc-args = [
+    "--html-in-header",
+    "katex.html",
+]
