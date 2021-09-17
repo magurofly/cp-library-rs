@@ -92,10 +92,50 @@ impl<T: Ord> BTreeMultiset<T> {
     self.remove(&max);
     Some(max)
   }
+
+  pub fn iter(&self) -> multiset_iter::Iter<'_, T> {
+    multiset_iter::Iter::new(self.set.iter())
+  }
+}
+
+pub mod multiset_iter {
+  pub struct Iter<'a, T: 'a + Ord> {
+    iter: std::collections::btree_map::Iter<'a, T, usize>,
+    current: Option<(&'a T, usize)>,
+  }
+
+  impl<'a, T: 'a + Ord> Iter<'a, T> {
+    pub fn new(mut iter: std::collections::btree_map::Iter<'a, T, usize>) -> Self {
+      let current =
+        if let Some((value, count)) = iter.next() {
+          Some((value, *count))
+        } else {
+          None
+        };
+      Self {
+        iter,
+        current,
+      }
+    }
+  }
+
+  impl<'a, T: 'a + Ord> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<&'a T> {
+      if self.current.as_ref().map(|x| x.1 == 0).unwrap_or(false) {
+        self.current = None;
+        if let Some((value, count)) = self.iter.next() {
+          self.current = Some((value, *count));
+        }
+      }
+      self.current.as_mut()?.1 -= 1;
+      Some(&self.current.as_ref()?.0)
+    }
+  }
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct HashMultiset<E>(std::collections::HashMap<E, usize>);
+pub struct HashMultiset<E: std::hash::Hash + Eq>(std::collections::HashMap<E, usize>);
 impl<E: Eq + std::hash::Hash> HashMultiset<E> {
 	pub fn new() -> Self { Self(std::collections::HashMap::new()) }
 	pub fn contains(&self, item: &E) -> bool { self.0.contains_key(item) }
