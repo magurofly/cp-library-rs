@@ -56,6 +56,7 @@ impl<T> Wheel<T> {
   }
 }
 
+use core::fmt;
 use std::cmp::*;
 use Ordering::*;
 use Wheel::*;
@@ -88,5 +89,16 @@ impl<T: PartialOrd> PartialOrd for Wheel<T> {
 impl<T: Ord> Ord for Wheel<T> {
   fn cmp(&self, other: &Self) -> Ordering {
     self.partial_cmp(other).expect("NaN is not comparable!")
+  }
+}
+
+impl<T: fmt::Display> fmt::Display for Wheel<T> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+      match self {
+        NaN => f.write_str("NaN"),
+        PositiveInfinity => f.write_str("Inf"),
+        NegativeInfinity => f.write_str("-Inf"),
+        Finite(x) => x.fmt(f),
+      }
   }
 }

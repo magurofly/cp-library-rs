@@ -27,6 +27,11 @@ impl<T: Add<Output = T>> Add for Wheel<T> {
   }
 }
 
+impl<T: Add<Output = T>> Add<T> for Wheel<T> {
+  type Output = Self;
+  fn add(self, other: T) -> Self { self + Finite(other) }
+}
+
 impl<T: Sub<Output = T>> Sub for Wheel<T> {
   type Output = Self;
   fn sub(self, other: Self) -> Self {
@@ -38,6 +43,11 @@ impl<T: Sub<Output = T>> Sub for Wheel<T> {
       (Finite(x), Finite(y)) => Finite(x - y),
     }
   }
+}
+
+impl<T: Sub<Output = T>> Sub<T> for Wheel<T> {
+  type Output = Self;
+  fn sub(self, other: T) -> Self { self - Finite(other) }
 }
 
 impl<T: Clone + Mul<Output = T> + Sub<Output = T> + Ord> Mul for Wheel<T> {
@@ -64,6 +74,11 @@ impl<T: Clone + Mul<Output = T> + Sub<Output = T> + Ord> Mul for Wheel<T> {
   }
 }
 
+impl<T: Clone + Mul<Output = T> + Sub<Output = T> + Ord> Mul<T> for Wheel<T> {
+  type Output = Self;
+  fn mul(self, other: T) -> Self { self * Finite(other) }
+}
+
 impl<T: Clone + Div<Output = T> + Sub<Output = T> + Ord> Div for Wheel<T> {
   type Output = Self;
   fn div(self, other: Self) -> Self {
@@ -86,6 +101,11 @@ impl<T: Clone + Div<Output = T> + Sub<Output = T> + Ord> Div for Wheel<T> {
   }
 }
 
+impl<T: Clone + Div<Output = T> + Sub<Output = T> + Ord> Div<T> for Wheel<T> {
+  type Output = Self;
+  fn div(self, other: T) -> Self { self / Finite(other) }
+}
+
 impl<T: Rem<Output = T>> Rem for Wheel<T> {
   type Output = Self;
   fn rem(self, other: Self) -> Self {
@@ -94,5 +114,20 @@ impl<T: Rem<Output = T>> Rem for Wheel<T> {
       (Finite(x), Finite(y)) => Finite(x % y),
       _ => NaN,
     }
+  }
+}
+
+impl<T: Rem<Output = T>> Rem<T> for Wheel<T> {
+  type Output = Self;
+  fn rem(self, other: T) -> Self { self % Finite(other) }
+}
+
+#[cfg(test)]
+pub mod test {
+  use super::*;
+
+  #[test]
+  fn test_ops() {
+    assert_eq!(Finite(1) + Finite(2), Finite(3));
   }
 }
