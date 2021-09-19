@@ -18,3 +18,6 @@ pub use median::*;
 
 pub mod multiset;
 pub use multiset::*;
+
+pub mod swag;
+pub use swag::*;
