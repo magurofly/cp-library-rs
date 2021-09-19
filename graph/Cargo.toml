@@ -9,3 +9,4 @@ license = "CC0-1.0"
 
 [dependencies]
 template = { path = "../template" }
+unideque = { path = "../unideque" }

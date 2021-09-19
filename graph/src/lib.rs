@@ -25,3 +25,4 @@ pub use graph_mat::*;
 pub mod impl_shortest_path;
 pub mod impl_dfs;
 pub mod impl_mst;
+pub mod impl_lowlink;
