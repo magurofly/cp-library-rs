@@ -68,12 +68,49 @@ pub trait Graph<E>: Sized {
     g
   }
 
+  /// `components` にある頂点集合をそれぞれ一つの頂点として扱ったグラフを返す
+  fn contract_vertices<F, R: GraphMut<F>, Map: FnMut(usize, usize, &E) -> F, Merge: FnMut(F, F) -> F>(&self, components: &Vec<Vec<usize>>, mut map: Map, mut merge: Merge) -> R {
+    let mut idx = vec![None; self.n()];
+    for (u, component) in components.iter().enumerate() {
+      for &v in component {
+        idx[v] = Some(u);
+      }
+    }
+    let mut edges = std::collections::HashMap::new();
+    self.each_edge(|e| {
+      for (u, v) in idx[e.from()].into_iter().zip(idx[e.to()]) {
+        let w1 = (map)(e.from(), e.to(), e.weight());
+        if let Some(w2) = edges.remove(&(u, v)) {
+          edges.insert((u, v), (merge)(w1, w2));
+        } else {
+          edges.insert((u, v), w1);
+        }
+      }
+    });
+    let mut g = R::new_graph(components.len());
+    for ((from, to), weight) in edges {
+      g.add_arc(from, to, weight);
+    }
+    g
+  }
+
   // algorithms
 
   /// トポロジカル順に強連結成分を返す
   /// O(N + M)
   fn scc(&self) -> Vec<Vec<usize>> {
     impl_lowlink::scc_tarjan(self)
+  }
+
+  /// 凝縮グラフ（強連結成分を縮約したグラフ）を返す
+  /// O(N + M)
+  fn condensed<R: GraphMut<()>>(&self) -> R {
+    self.contract_vertices(&self.scc(), |_, _, _| (), |_, _| ())
+  }
+
+  /// 凝縮グラフを返す（辺の重みは和とする）
+  fn condensed_add<R: GraphMut<E>>(&self) -> R where E: Clone + std::ops::Add<Output = E> {
+    self.contract_vertices(&self.scc(), |_, _, w| w.clone(), |w1, w2| w1 + w2)
   }
 
   fn dijkstra_graph_with_heap_by<R: GraphMut<C>, C: Copy + Add<Output = C> + Sub<Output = C> + Default + Ord>(&self, start: usize, heap: impl Heap<(C, usize)>, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> (Vec<Option<C>>, R) {
