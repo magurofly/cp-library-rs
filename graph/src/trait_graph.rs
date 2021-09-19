@@ -70,6 +70,12 @@ pub trait Graph<E>: Sized {
 
   // algorithms
 
+  /// トポロジカル順に強連結成分を返す
+  /// O(N + M)
+  fn scc(&self) -> Vec<Vec<usize>> {
+    impl_lowlink::scc_tarjan(self)
+  }
+
   fn dijkstra_graph_with_heap_by<R: GraphMut<C>, C: Copy + Add<Output = C> + Sub<Output = C> + Default + Ord>(&self, start: usize, heap: impl Heap<(C, usize)>, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> (Vec<Option<C>>, R) {
     impl_shortest_path::dijkstra(self, start, heap, cost)
   }
