@@ -61,6 +61,59 @@ pub trait Int: PrimInt + IntLike {
     v
   }
 
+  fn from_base_digits(digits: impl IntoIterator<Item = char>, radix: &[char]) -> Self {
+    let base = Self::from_usize(radix.len());
+    let mut value = Self::zero();
+    for digit in digits {
+      for i in 0 .. radix.len() {
+        if radix[i] == digit {
+          value = value * base + Self::from_usize(i);
+        }
+      }
+    }
+    value
+  }
+
+  fn from_base(digits: impl IntoIterator<Item = char>, base: impl Int) -> Self where Self::FromStrRadixErr: std::fmt::Debug {
+    Self::from_str_radix(&digits.into_iter().collect::<String>(), base.cast()).unwrap()
+  }
+
+  fn to_base(self, radix: &[char]) -> String {
+    let base = radix.len().cast();
+    let mut res = String::new();
+    let mut n = self;
+    if n.is_negative() {
+      res.push('-');
+      n = Self::zero() - n;
+    }
+    if n.is_zero() {
+      res.push('0');
+    }
+    while n.is_positive() {
+      res.push(std::char::from_digit((n % base).cast(), base.cast()).unwrap());
+      n = n / base;
+    }
+    res
+  }
+
+  fn to_base_digits(self, radix: &[char]) -> String {
+    let base = radix.len();
+    let mut res = String::new();
+    let mut n = self;
+    if n.is_negative() {
+      res.push('-');
+      n = Self::zero() - n;
+    }
+    if n.is_zero() {
+      res.push(radix[0]);
+    }
+    while n.is_positive() {
+      res.push(radix[(n % base.cast()).as_usize() % base]);
+      n = n / base.cast();
+    }
+    res
+  }
+
   fn pow_mod<E: Int>(self, mut e: E, m: Self) -> Self {
     let mut x = self % m;
     if e.is_negative() {
