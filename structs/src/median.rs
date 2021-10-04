@@ -77,6 +77,10 @@ impl<T: Clone + Ord> Median<T> {
     }
     true
   }
+
+  pub fn iter(&self) -> std::iter::Chain<multiset_iter::Iter<'_, T>, multiset_iter::Iter<'_, T>> {
+    self.left.iter().chain(self.right.iter())
+  }
 }
 
 #[cfg(test)]

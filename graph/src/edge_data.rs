@@ -32,6 +32,7 @@ impl EdgeData<()> for (usize, usize) {
   }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct EdgeInfo<'a, E> {
   from: usize,
   to: usize,

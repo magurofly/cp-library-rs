@@ -1,4 +1,9 @@
 use std::ops::*;
+use elements::*;
+use subset::*;
+
+pub mod elements;
+pub mod subset;
 
 pub trait Bits: Sized + Clone + Copy + PartialEq + Eq + Default + Add<Output = Self> + Sub<Output = Self> + Mul<Output = Self> + BitAnd<Output = Self> + BitOr<Output = Self> + BitXor<Output = Self> + Not<Output = Self> + Shl<u32, Output = Self> + Shr<u32, Output = Self> {
   fn width() -> usize;
@@ -10,14 +15,31 @@ pub trait Bits: Sized + Clone + Copy + PartialEq + Eq + Default + Add<Output = S
   fn ctz(self) -> usize;
   fn popcount(self) -> usize;
 
+  /// `(self & 1 << idx) != 0`
   fn bit_at(self, idx: usize) -> bool {
     assert!(idx < Self::width());
     (self & Self::top(idx)) != Self::none()
   }
+
+  /// `self[idx] = true`
   fn bit_on(&mut self, idx: usize) { *self = *self | Self::top(idx); }
+
+  /// `self[idx] = false`
   fn bit_off(&mut self, idx: usize) { *self = *self & !Self::top(idx); }
+
+  /// `self[idx] ^= true`
   fn bit_flip(&mut self, idx: usize) { *self = *self ^ Self::top(idx); }
+
+  /// `self[idx] = val`
   fn bit_set(&mut self, idx: usize, val: bool) { if val { self.bit_on(idx); } else { self.bit_off(idx); } }
+
+  /// `self.bit_on(index) = true` となる `index` を列挙する
+  /// O(bit_length)
+  fn elements(self) -> Elements<Self> { Elements::new(self) }
+
+  /// 部分集合（自分自身や空集合も含む）を列挙する
+  /// O(3^bit_length)
+  fn subsets(self) -> SubSets<Self> { SubSets::new(self) }
 }
 
 macro_rules! impl_int {

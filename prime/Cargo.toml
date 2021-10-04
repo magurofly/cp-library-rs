@@ -1,5 +1,5 @@
 [package]
-name = "graph"
+name = "prime"
 version = "0.1.0"
 authors = ["magurofly <fishfishfish@hash.fyi>"]
 edition = "2018"
@@ -8,5 +8,5 @@ license = "CC0-1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-template = { path = "../template" }
-unideque = { path = "../unideque" }
+num-traits = "=0.2.11"
+number = { path = "../number" }
