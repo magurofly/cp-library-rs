@@ -1,13 +1,10 @@
 use std::ops::*;
 
-pub fn sum_of_pair_mul<T: Default + Clone + AddAssign + Mul<Output = T>>(xs: &[T]) -> T {
-  let mut ans = T::default();
-  let mut sum = T::default();
-  for i in (0 .. xs.len().saturating_sub(1)).rev() {
-    sum += xs[i + 1].clone();
-    ans += sum.clone() * xs[i].clone();
-  }
-  ans
+pub fn sum_of_pair_mul<T: Default + Clone + Add<Output = T> + Mul<Output = T>>(xs: &[T]) -> T {
+  xs.iter().rev().fold(
+    (T::default(), T::default()),
+    |(ans, sum), x| (ans + sum.clone() * x.clone(), sum + x.clone())
+  ).0
 }
 
 #[cfg(test)]
