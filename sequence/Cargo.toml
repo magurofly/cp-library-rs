@@ -8,3 +8,7 @@ license = "CC0-1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+num-traits = "=0.2.11"
+
+[dev-dependencies]
+# acl-modint = { package = "ac-library-rs-parted-modint", path = "../../ac/ac-library-rs-parted-modint" }
