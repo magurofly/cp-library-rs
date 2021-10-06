@@ -83,19 +83,27 @@ impl<T: Clone + Div<Output = T> + Sub<Output = T> + Ord> Div for Wheel<T> {
   type Output = Self;
   fn div(self, other: Self) -> Self {
     match (self, other) {
-      (PositiveInfinity, Finite(x)) | (Finite(x), PositiveInfinity) =>
-        match x.cmp(&(x.clone() - x.clone())) {
-          Equal => NaN,
+      (Finite(x), PositiveInfinity) | (Finite(x), NegativeInfinity) => Finite(x.clone() - x.clone()),
+      (PositiveInfinity, Finite(y)) =>
+        match y.cmp(&(y.clone() - y.clone())) {
           Less => NegativeInfinity,
-          Greater => PositiveInfinity,
+          _ => PositiveInfinity,
         },
-      (NegativeInfinity, Finite(x)) | (Finite(x), NegativeInfinity) =>
-        match x.cmp(&(x.clone() - x.clone())) {
-          Equal => NaN,
+      (NegativeInfinity, Finite(y)) =>
+        match y.cmp(&(y.clone() - y.clone())) {
           Less => PositiveInfinity,
-          Greater => NegativeInfinity,
+          _ => NegativeInfinity,
         },
-      (Finite(x), Finite(y)) => Finite(x / y),
+      (Finite(x), Finite(y)) =>
+        if y == y.clone() - y.clone() {
+          match x.cmp(&(x.clone() - x.clone())) {
+            Equal => NaN,
+            Greater => PositiveInfinity,
+            Less => NegativeInfinity,
+          }
+        } else {
+          Finite(x / y)
+        },
       _ => NaN,
     }
   }

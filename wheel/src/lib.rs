@@ -2,6 +2,8 @@ pub mod ops;
 pub use ops::*;
 
 #[derive(Debug, Clone, Copy)]
+/// 有限の値に加えて正負の無限・非数を扱える数値型
+/// 四則演算をサポートしている
 pub enum Wheel<T> {
   NaN,
   PositiveInfinity,
