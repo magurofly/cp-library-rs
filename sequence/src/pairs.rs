@@ -72,6 +72,52 @@ pub fn sum_pair_affine<T: Copy + Add<Output = T> + Mul<Output = T> + TryFrom<usi
   ans
 }
 
+/// 非順序対 (x, y) に対して x ^ y の総和を返す
+/// 計算量: w ビットのとき、 O(Nw)
+pub fn sum_pair_xor_u64(xs: &[u64]) -> u64 {
+  let bits = xs.iter().map(|&x| 64 - x.leading_zeros()).max().unwrap_or(0);
+  (0 .. bits).map(|bit| {
+    let mut ans = 0;
+    let mut count = [0, 0];
+    for x in xs.iter().rev().map(|&x| x >> bit & 1) {
+      ans += count[1 ^ x as usize];
+      count[x as usize] += 1;
+    }
+    ans << bit
+  }).sum()
+}
+
+/// 非順序対 (x, y) に対して x ^ y の総和を返す
+/// 計算量: w ビットのとき、 O(Nw)
+pub fn sum_pair_or_u64(xs: &[u64]) -> u64 {
+  let bits = xs.iter().map(|&x| 64 - x.leading_zeros()).max().unwrap_or(0);
+  (0 .. bits).map(|bit| {
+    let mut ans = 0;
+    let mut count = [0, 0];
+    for x in xs.iter().rev().map(|&x| x >> bit & 1) {
+      ans += count[x as usize];
+      count[0] += x;
+      count[1] += 1;
+    }
+    ans << bit
+  }).sum()
+}
+
+/// 非順序対 (x, y) に対して x ^ y の総和を返す
+/// 計算量: w ビットのとき、 O(Nw)
+pub fn sum_pair_and_u64(xs: &[u64]) -> u64 {
+  let bits = xs.iter().map(|&x| 64 - x.leading_zeros()).max().unwrap_or(0);
+  (0 .. bits).map(|bit| {
+    let mut ans = 0;
+    let mut sum = 0;
+    for x in xs.iter().rev().map(|&x| x >> bit & 1) {
+      ans += x * sum;
+      sum += x;
+    }
+    ans << bit
+  }).sum()
+}
+
 fn cast<T, U: TryFrom<T>>(x: T) -> U where U::Error: Debug {
   U::try_from(x).unwrap()
 }
@@ -88,6 +134,15 @@ pub mod test {
     &[0],
     &[1],
     &[-1]
+  ];
+
+  const UINT_SEQS: [&[u64]; 6] = [
+    &[],
+    &[0],
+    &[1, 2, 3, 4, 5],
+    &[1, 2, 4, 8, 16],
+    &[5, 4, 3, 2, 1],
+    &[4, 90, 11, 87, 1101, 303, 0, 39],
   ];
 
   fn pairs<T: Copy>(xs: &[T]) -> Vec<(T, T)> {
@@ -135,6 +190,33 @@ pub mod test {
     for xs in &INT_SEQS {
       let a = pairs(xs).into_iter().map(|(x, y)| x * y).sum::<i64>();
       let b = sum_pair_mul(xs);
+      assert_eq!(a, b, "{:?}", xs);
+    }
+  }
+
+  #[test]
+  fn test_sum_and() {
+    for xs in &UINT_SEQS {
+      let a = pairs(xs).into_iter().map(|(x, y)| x & y).sum::<u64>();
+      let b = sum_pair_and_u64(xs);
+      assert_eq!(a, b, "{:?}", xs);
+    }
+  }
+
+  #[test]
+  fn test_sum_or() {
+    for xs in &UINT_SEQS {
+      let a = pairs(xs).into_iter().map(|(x, y)| x | y).sum::<u64>();
+      let b = sum_pair_or_u64(xs);
+      assert_eq!(a, b, "{:?}", xs);
+    }
+  }
+
+  #[test]
+  fn test_sum_xor() {
+    for xs in &UINT_SEQS {
+      let a = pairs(xs).into_iter().map(|(x, y)| x ^ y).sum::<u64>();
+      let b = sum_pair_xor_u64(xs);
       assert_eq!(a, b, "{:?}", xs);
     }
   }
