@@ -1,3 +1,5 @@
+use crate::impl_shortest_path::floyd_warshall;
+
 use super::*;
 use template::*;
 use std::ops::*;
@@ -150,6 +152,16 @@ pub trait Graph<E>: Sized {
   /// O(E log V)
   fn dijkstra(&self, start: usize) -> Vec<Option<E>> where E: Copy + Add<Output = E> + Sub<Output = E> + Default + Ord, Self: Sized {
     self.dijkstra_by(start, |edge, dist| Some(dist + *edge.weight()))
+  }
+
+  fn floyd_warshall_by<C: Default + Ord>(&self, loops: bool, cost: impl FnMut(EdgeInfo<E>) -> Option<C>, sum: impl FnMut(&C, &C) -> C) -> Vec<Vec<Option<C>>> where Self: Sized {
+    floyd_warshall(self, loops, cost, sum)
+  }
+
+  /// Floyd-Warshall法で最短路を求める
+  /// O(V^3)
+  fn floyd_warshall(&self) -> Vec<Vec<Option<E>>> where E: Copy + Add<Output = E> + Default + Ord, Self: Sized {
+    floyd_warshall(self, true, |e| Some(*e.weight()), |&d1, &d2| d1 + d2)
   }
 
   fn bfs_multistart(&self, start: impl IntoIterator<Item = usize>) -> Vec<Option<usize>> {

@@ -5,6 +5,22 @@ pub struct MatGraph<E> {
   mat: Vec<Vec<Option<E>>>,
 }
 
+impl<E: Clone> MatGraph<E> {
+  pub fn new(n: usize) -> Self {
+    Self::new_graph(n)
+  }
+
+  pub fn new_from<T>(mat: &Vec<Vec<T>>, mut f: impl FnMut(&T) -> Option<E>) -> Self {
+    let mut this = Self::new(mat.len());
+    for (i, row) in mat.iter().enumerate() {
+      for (j, x) in row.iter().enumerate() {
+        this.mat[i][j] = (f)(x);
+      }
+    }
+    this
+  }
+}
+
 impl<E: Clone> Graph<E> for MatGraph<E> {
   type Edge = (usize, E);
 
@@ -42,5 +58,15 @@ impl<E: Clone> GraphMut<E> for MatGraph<E> {
     for to in 0 .. self.n() {
       self.mat[from][to] = None;
     }
+  }
+}
+
+impl<T> From<Vec<Vec<Option<T>>>> for MatGraph<T> {
+  fn from(mat: Vec<Vec<Option<T>>>) -> Self {
+    let mut m = 0;
+    for row in mat.iter() {
+      m += row.iter().filter(|x| x.is_some()).count();
+    }
+    Self { m, mat }
   }
 }

@@ -2,6 +2,9 @@ use std::ops::{Deref};
 
 use super::*;
 
+pub type UnweightedGraph = Vec<Vec<usize>>;
+pub type WeightedGraph<T> = Vec<Vec<(usize, T)>>;
+
 pub trait VecGraph<E, Ed: Edge<E>>: Graph<E, Edge = Ed> + GraphMut<E> + Deref<Target = [Vec<Ed>]> {
 }
 
