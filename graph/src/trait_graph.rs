@@ -108,18 +108,16 @@ pub trait Graph<E>: Sized {
     let mut path = vec![start];
     let mut u = start;
     let mut tail = 1;
-    loop {
-      if let Some(v) = (next)(u) {
-        if let Some(&head) = first.get(&v) {
-          tail = head;
-          path.push(v);
-          first.insert(v, tail);
-          u = v;
-          tail += 1;
-          continue;
-        }
+    while let Some(v) = (next)(u) {
+      if let Some(&head) = first.get(&v) {
+        tail = head;
+        break;
+      } else {
+        path.push(v);
+        first.insert(v, tail);
+        u = v;
+        tail += 1;
       }
-      break;
     }
     Cycle::new(path, first, tail)
   }
