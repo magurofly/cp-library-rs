@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Debug, Clone)]
 pub struct Cycle {
   path: Vec<usize>,
   first: HashMap<usize, usize>,
