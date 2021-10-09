@@ -1,8 +1,8 @@
-use crate::impl_shortest_path::floyd_warshall;
+use crate::{impl_shortest_path::floyd_warshall, struct_cycle::Cycle};
 
 use super::*;
 use template::*;
-use std::ops::*;
+use std::{collections::*, ops::*};
 
 pub trait Graph<E>: Sized {
   type Edge: Edge<E>;
@@ -97,6 +97,42 @@ pub trait Graph<E>: Sized {
   }
 
   // algorithms
+
+  /// `start` からのサイクルを検出する
+  /// `next(v)`: 頂点 `v` の次の頂点
+  /// 返り値: (通ったパス, サイクル長)
+  /// O(N)
+  fn find_cycle_by(&self, start: usize, mut next: impl FnMut(usize) -> Option<usize>) -> Cycle {
+    let mut first = HashMap::new();
+    first.insert(start, 0);
+    let mut path = vec![start];
+    let mut u = start;
+    let mut tail = 1;
+    while let Some(v) = (next)(u) {
+      if let Some(&head) = first.get(&v) {
+        tail = head;
+        break;
+      } else {
+        path.push(v);
+        first.insert(v, tail);
+        u = v;
+        tail += 1;
+      }
+    }
+    Cycle::new(path, first, tail)
+  }
+
+  /// `start` からのサイクルを検出する
+  /// ある頂点から出る辺が複数ある場合、常に一番最後のものが選ばれる
+  fn find_cycle(&self, start: usize) -> Cycle {
+    self.find_cycle_by(start, |u| {
+      let mut v = None;
+      self.each_edge_from(u, |e| {
+        v = Some(e.to());
+      });
+      v
+    })
+  }
 
   /// トポロジカル順に強連結成分を返す
   /// O(N + M)

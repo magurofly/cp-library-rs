@@ -29,3 +29,5 @@ pub mod impl_shortest_path;
 pub mod impl_dfs;
 pub mod impl_mst;
 pub mod impl_lowlink;
+pub mod struct_cycle;
+pub mod graph_single;
