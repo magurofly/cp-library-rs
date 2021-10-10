@@ -151,6 +151,19 @@ pub trait Graph<E>: Sized {
     self.contract_vertices(&self.scc(), |_, _, w| w.clone(), |w1, w2| w1 + w2)
   }
 
+  // 距離など
+
+  /// 重みなし木の直径を計算する
+  /// 木でない場合は、2-近似になる
+  /// 返り値: (直径, 端点, 端点)
+  fn tree_diameter_unweighted(&self) -> (usize, usize, usize) {
+    let d1 = self.bfs(0);
+    let u = d1.into_iter().enumerate().max_by_key(|x| x.1).unwrap().0;
+    let d2 = self.bfs(u);
+    let (v, d) = d2.into_iter().enumerate().max_by_key(|x| x.1).unwrap();
+    (d.unwrap_or(0), u, v)
+  }
+
   fn dijkstra_graph_with_heap_by<R: GraphMut<C>, C: Copy + Add<Output = C> + Sub<Output = C> + Default + Ord>(&self, start: usize, heap: impl Heap<(C, usize)>, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> (Vec<Option<C>>, R) {
     impl_shortest_path::dijkstra(self, start, heap, cost)
   }
