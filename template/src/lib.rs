@@ -64,7 +64,7 @@ pub trait MyOrd : PartialOrd + Sized {
 }
 impl<T: Sized + PartialOrd> MyOrd for T {}
 
-pub trait MyOpt<T> : IntoIterator<Item = T> {
+pub trait MyOpt<T> {
   fn is_present(&self) -> bool;
   fn pop(&mut self) -> T;
   fn get(&self) -> &T;

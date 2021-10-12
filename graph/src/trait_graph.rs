@@ -1,6 +1,8 @@
+use crate::{impl_shortest_path::floyd_warshall, struct_cycle::Cycle};
+
 use super::*;
 use template::*;
-use std::ops::*;
+use std::{collections::*, ops::*};
 
 pub trait Graph<E>: Sized {
   type Edge: Edge<E>;
@@ -96,6 +98,80 @@ pub trait Graph<E>: Sized {
 
   // algorithms
 
+  /// 連結成分へ分解する
+  /// 返り値: 頂点集合のリスト
+  /// 計算量: O(N)
+  fn connected_components(&self) -> Vec<Vec<usize>> {
+    let mut components = vec![];
+    let mut visited = vec![false; self.n()];
+    let mut stack = vec![];
+    for i in 0 .. self.n() {
+      if visited[i] {
+        continue;
+      }
+      let mut component = vec![i];
+      stack.push(i);
+      visited[i] = true;
+      while let Some(u) = stack.pop() {
+        component.push(u);
+        self.each_edge_from(u, |e| {
+          if !visited[e.to()] {
+            visited[e.to()] = true;
+            component.push(e.to());
+            stack.push(e.to());
+          }
+        });
+      }
+      components.push(component);
+    }
+    components
+  }
+
+  /// 同じ連結成分か判定する
+  /// 計算量: O(N)
+  fn is_connected(&self, u: usize, v: usize) -> bool {
+    let components = self.connected_components();
+    let i = (0 .. components.len()).find(|&i| components[i].contains(&u));
+    let j = (0 .. components.len()).find(|&j| components[j].contains(&v));
+    i == j
+  }
+
+  /// `start` からのサイクルを検出する
+  /// `next(v)`: 頂点 `v` の次の頂点
+  /// 返り値: (通ったパス, サイクル長)
+  /// O(N)
+  fn find_cycle_by(&self, start: usize, mut next: impl FnMut(usize) -> Option<usize>) -> Cycle {
+    let mut first = HashMap::new();
+    first.insert(start, 0);
+    let mut path = vec![start];
+    let mut u = start;
+    let mut tail = 1;
+    while let Some(v) = (next)(u) {
+      if let Some(&head) = first.get(&v) {
+        tail = head;
+        break;
+      } else {
+        path.push(v);
+        first.insert(v, tail);
+        u = v;
+        tail += 1;
+      }
+    }
+    Cycle::new(path, first, tail)
+  }
+
+  /// `start` からのサイクルを検出する
+  /// ある頂点から出る辺が複数ある場合、常に一番最後のものが選ばれる
+  fn find_cycle(&self, start: usize) -> Cycle {
+    self.find_cycle_by(start, |u| {
+      let mut v = None;
+      self.each_edge_from(u, |e| {
+        v = Some(e.to());
+      });
+      v
+    })
+  }
+
   /// トポロジカル順に強連結成分を返す
   /// O(N + M)
   fn scc(&self) -> Vec<Vec<usize>> {
@@ -111,6 +187,19 @@ pub trait Graph<E>: Sized {
   /// 凝縮グラフを返す（辺の重みは和とする）
   fn condensed_add<R: GraphMut<E>>(&self) -> R where E: Clone + std::ops::Add<Output = E> {
     self.contract_vertices(&self.scc(), |_, _, w| w.clone(), |w1, w2| w1 + w2)
+  }
+
+  // 距離など
+
+  /// 重みなし木の直径を計算する
+  /// 木でない場合は、2-近似になる
+  /// 返り値: (直径, 端点, 端点)
+  fn tree_diameter_unweighted(&self) -> (usize, usize, usize) {
+    let d1 = self.bfs(0);
+    let u = d1.into_iter().enumerate().max_by_key(|x| x.1).unwrap().0;
+    let d2 = self.bfs(u);
+    let (v, d) = d2.into_iter().enumerate().max_by_key(|x| x.1).unwrap();
+    (d.unwrap_or(0), u, v)
   }
 
   fn dijkstra_graph_with_heap_by<R: GraphMut<C>, C: Copy + Add<Output = C> + Sub<Output = C> + Default + Ord>(&self, start: usize, heap: impl Heap<(C, usize)>, cost: impl FnMut(&Self::Edge, C) -> Option<C>) -> (Vec<Option<C>>, R) {
@@ -150,6 +239,16 @@ pub trait Graph<E>: Sized {
   /// O(E log V)
   fn dijkstra(&self, start: usize) -> Vec<Option<E>> where E: Copy + Add<Output = E> + Sub<Output = E> + Default + Ord, Self: Sized {
     self.dijkstra_by(start, |edge, dist| Some(dist + *edge.weight()))
+  }
+
+  fn floyd_warshall_by<C: Default + Ord>(&self, loops: bool, cost: impl FnMut(EdgeInfo<E>) -> Option<C>, sum: impl FnMut(&C, &C) -> C) -> Vec<Vec<Option<C>>> where Self: Sized {
+    floyd_warshall(self, loops, cost, sum)
+  }
+
+  /// Floyd-Warshall法で最短路を求める
+  /// O(V^3)
+  fn floyd_warshall(&self) -> Vec<Vec<Option<E>>> where E: Copy + Add<Output = E> + Default + Ord, Self: Sized {
+    floyd_warshall(self, true, |e| Some(*e.weight()), |&d1, &d2| d1 + d2)
   }
 
   fn bfs_multistart(&self, start: impl IntoIterator<Item = usize>) -> Vec<Option<usize>> {
