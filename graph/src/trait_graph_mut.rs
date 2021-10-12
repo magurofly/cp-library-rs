@@ -10,6 +10,11 @@ pub trait GraphMut<E>: Graph<E> {
     self.add_arc(to, from, weight);
   }
 
+  fn connect(&mut self, u: usize, v: usize) where E: Default {
+    self.add_arc(u, v, E::default());
+    self.add_arc(v, u, E::default());
+  }
+
   fn add_arcs<D: EdgeData<E>>(&mut self, arcs: impl IntoIterator<Item = D>) where E: Clone {
     for arc in arcs {
       self.add_arc(arc.from(), arc.to(), arc.weight().clone());

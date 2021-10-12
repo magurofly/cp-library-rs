@@ -98,6 +98,44 @@ pub trait Graph<E>: Sized {
 
   // algorithms
 
+  /// 連結成分へ分解する
+  /// 返り値: 頂点集合のリスト
+  /// 計算量: O(N)
+  fn connected_components(&self) -> Vec<Vec<usize>> {
+    let mut components = vec![];
+    let mut visited = vec![false; self.n()];
+    let mut stack = vec![];
+    for i in 0 .. self.n() {
+      if visited[i] {
+        continue;
+      }
+      let mut component = vec![i];
+      stack.push(i);
+      visited[i] = true;
+      while let Some(u) = stack.pop() {
+        component.push(u);
+        self.each_edge_from(u, |e| {
+          if !visited[e.to()] {
+            visited[e.to()] = true;
+            component.push(e.to());
+            stack.push(e.to());
+          }
+        });
+      }
+      components.push(component);
+    }
+    components
+  }
+
+  /// 同じ連結成分か判定する
+  /// 計算量: O(N)
+  fn is_connected(&self, u: usize, v: usize) -> bool {
+    let components = self.connected_components();
+    let i = (0 .. components.len()).find(|&i| components[i].contains(&u));
+    let j = (0 .. components.len()).find(|&j| components[j].contains(&v));
+    i == j
+  }
+
   /// `start` からのサイクルを検出する
   /// `next(v)`: 頂点 `v` の次の頂点
   /// 返り値: (通ったパス, サイクル長)
