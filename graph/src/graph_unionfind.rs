@@ -78,6 +78,10 @@ impl Graph<()> for UnionFind {
     components.retain(|component| component.len() != 0);
     components
   }
+
+  fn is_connected(&self, u: usize, v: usize) -> bool {
+    self.is_same(u, v)
+  }
 }
 
 
@@ -98,12 +102,10 @@ impl GraphMut<()> for UnionFind {
     self.merge(from, to);
   }
 
-  /// O(1)
   fn edge_weight_mut(&mut self, _: usize, _: usize) -> Option<&mut ()> { 
     unimplemented!()
   }
 
-  /// O(V)
   fn clear_edges(&mut self, _: usize) {
     unimplemented!()
   }
