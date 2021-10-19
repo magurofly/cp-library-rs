@@ -189,6 +189,36 @@ pub trait Graph<E>: Sized {
     self.contract_vertices(&self.scc(), |_, _, w| w.clone(), |w1, w2| w1 + w2)
   }
 
+  /// 後行順で辺を走査する
+  fn dfs_postorder_edge(&self, root: usize, edge: impl FnMut(usize, usize, &E)) {
+    struct State<Edge> {
+      edge: Edge,
+    }
+    fn rec<E, G: Graph<E>, Edge: FnMut(usize, usize, &E)>(state: &mut State<Edge>, g: &G, u: usize, p: usize) {
+      g.each_edge_from(u, |e| {
+        if e.to() == p {
+          return;
+        }
+        rec(state, g, e.to(), u);
+        (state.edge)(u, e.to(), e.weight());
+      });
+    }
+    rec(&mut State { edge }, self, root, root);
+  }
+
+  /// 木DPをする
+  fn tree_dp<T, I: Fn() -> T, O: FnMut(&mut T, &T, &E)>(&self, root: usize, leaf: I, mut operator: O) -> Vec<T> {
+    let mut tmp = (leaf)();
+    let mut dp = Vec::with_capacity(self.n());
+    dp.resize_with(self.n(), leaf);
+    self.dfs_postorder_edge(root, |u, v, w| {
+      std::mem::swap(&mut tmp, &mut dp[u]);
+      (operator)(&mut tmp, &dp[v], w);
+      std::mem::swap(&mut tmp, &mut dp[u]);
+    });
+    dp
+  }
+
   // 距離など
 
   /// 重みなし木の直径を計算する
