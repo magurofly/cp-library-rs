@@ -16,6 +16,7 @@ pub trait MyList<T> : Index<usize, Output = T> {
   fn max_value(&self) -> T where T: Clone + Ord { self.citer().max().unwrap() }
   fn min_value(&self) -> T where T: Clone + Ord { self.citer().max().unwrap() }
   fn at<I: MyIndex>(&self, idx: I) -> &T { idx.of_slice(self.to_slice()) }
+  fn all_same(&self) -> bool where T: Eq { self.to_slice().windows(2).all(|w| w[0].eq(&w[1])) }
 }
 impl<T> MyList<T> for [T] {
   fn to_slice(&self) -> &[T] { self }
