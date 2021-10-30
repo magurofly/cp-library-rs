@@ -43,6 +43,7 @@ pub trait MyItertools : Iterator {
   fn cumsum(self) -> Cumulated<Self::Item, Box<dyn Fn(Self::Item, Self::Item) -> Self::Item>, Box<dyn Fn(Self::Item) -> Self::Item>> where Self: Sized, Self::Item: Copy + Num {
     Cumulated::new(self, Self::Item::zero(), Box::new(|x, y| x + y), Box::new(|x| Self::Item::zero() - x))
   }
+  fn map_into<T: From<Self::Item>>(self) -> std::iter::Map<Self, fn(Self::Item) -> T> where Self: Sized { self.map(T::from) }
 }
 impl<T: ?Sized> MyItertools for T where T: Iterator {}
 
