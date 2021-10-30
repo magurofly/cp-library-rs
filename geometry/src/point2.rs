@@ -25,6 +25,11 @@ impl<T: Copy + Num> Point2<T> {
   pub fn arg(self) -> T where T: Float {
     self.y.atan2(self.x)
   }
+
+  /// 偏角で比較
+  pub fn cmp_by_arg(&self, other: &Self) -> std::cmp::Ordering where T: PartialOrd {
+    (*self).cross(*other).partial_cmp(&T::zero()).unwrap()
+  }
 }
 
 impl<T: Copy + Num> Point<T> for Point2<T> {

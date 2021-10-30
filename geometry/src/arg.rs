@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, ops::{Deref, DerefMut}};
 
 use super::*;
 use num_traits::*;
@@ -23,21 +23,27 @@ impl<T: Copy + Num> PartialEq for OrdByArg<T> {
 impl<T: Copy + Num> Eq for OrdByArg<T> {}
 impl<T: Copy + Num + PartialOrd> PartialOrd for OrdByArg<T> {
   fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-    self.0.cross(other.0).partial_cmp(&T::zero())
+    Some(self.0.cmp_by_arg(&other.0))
   }
 }
 impl<T: Copy + Num + PartialOrd> Ord for OrdByArg<T> {
   fn cmp(&self, other: &Self) -> Ordering {
-    self.partial_cmp(other).unwrap()
+    self.0.cmp_by_arg(&other.0)
   }
 }
-
-/// 偏角で比較
-pub fn cmp_by_arg<T: Copy + Num + PartialOrd>(x: &Point2<T>, y: &Point2<T>) -> Ordering {
-  x.cross(*y).partial_cmp(&T::zero()).unwrap()
+impl<T: Copy + Num> Deref for OrdByArg<T> {
+  type Target = Point2<T>;
+  fn deref(&self) -> &Point2<T> {
+    &self.0
+  }
+}
+impl<T: Copy + Num> DerefMut for OrdByArg<T> {
+  fn deref_mut(&mut self) -> &mut Point2<T> {
+    &mut self.0
+  }
 }
 
 /// 偏角ソート
 pub fn sort_by_arg<T: Copy + Num + PartialOrd>(slice: &mut [Point2<T>]) {
-  slice.sort_by(cmp_by_arg);
+  slice.sort_by(Point2::cmp_by_arg);
 }
