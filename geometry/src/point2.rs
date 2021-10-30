@@ -21,6 +21,7 @@ impl<T: Copy + Num> Point2<T> {
     self.x * other.y - self.y * other.x
   }
 
+  /// 偏角
   pub fn arg(self) -> T where T: Float {
     self.y.atan2(self.x)
   }
