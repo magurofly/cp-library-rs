@@ -1,11 +1,125 @@
-pub struct UnionFind(Vec<isize>, usize);
+pub struct UnionFind {
+  components: Vec<UnionFindComponent>,
+  len: usize,
+}
 impl UnionFind {
-  pub fn new(n: usize) -> Self { Self(vec![-1; n], n) }
-  pub fn leader(&mut self, mut i: usize) -> usize { let k = self.0[i]; if k >= 0 { let j = self.leader(k as usize); self.0[i] = j as isize; i = j; }; i }
-  pub fn merge(&mut self, mut i: usize, mut j: usize) -> bool { i = self.leader(i); j = self.leader(j); i != j && { if self.0[i] > self.0[j] { let k = i; i = j; j = k; }; self.0[i] += self.0[j]; self.0[j] = i as isize; true } }
-  pub fn same(&mut self, i: usize, j: usize) -> bool { self.leader(i) == self.leader(j) }
-  pub fn size(&mut self, mut i: usize) -> usize { i = self.leader(i); -self.0[i] as usize }
-  pub fn groups(&mut self) -> Vec<Vec<usize>> { let mut s = vec![vec![]; self.1]; for i in 0 .. self.1 { s[self.leader(i)].push(i) }; s.into_iter().filter(|g| g.len() > 0 ).collect::<Vec<_>>() }
+  /// 頂点数 $n$ の、辺のないグラフを作成する
+  pub fn new(n: usize) -> Self {
+    Self {
+      components: (0 .. n).map(UnionFindComponent::new).collect::<Vec<_>>(),
+      len: n,
+    }
+  }
+
+  /// 頂点 $i$ を含む連結成分を代表する頂点を返す
+  pub fn leader(&mut self, i: usize) -> usize {
+    let mut k = self.components[i].root;
+    if k != i {
+      k = self.leader(k);
+      self.components[i].root = k;
+    }
+    k
+  }
+
+  /// 頂点 $i$ と頂点 $j$ を無向辺で結ぶ
+  pub fn merge(&mut self, mut i: usize, mut j: usize) -> bool {
+    i = self.leader(i);
+    j = self.leader(j);
+    self.components[i].edges += 1;
+    if i == j {
+      return false;
+    }
+    self.len -= 1;
+    if self.components[i].vertices < self.components[j].vertices {
+      std::mem::swap(&mut i, &mut j);
+    }
+    self.components[i].edges += self.components[j].edges;
+    self.components[i].vertices += self.components[j].vertices;
+    self.components[j].root = i;
+    true
+  }
+
+  /// 頂点 $i$ と頂点 $j$ が同じ連結成分に含まれるかを返す
+  pub fn is_same(&mut self, mut i: usize, mut j: usize) -> bool {
+    i = self.leader(i);
+    j = self.leader(j);
+    i == j
+  }
+
+  /// 連結成分の数を返す
+  pub fn len(&self) -> usize {
+    self.len
+  }
+
+  /// 頂点 $i$ を含む連結成分を返す
+  pub fn component(&mut self, mut i: usize) -> &UnionFindComponent {
+    i = self.leader(i);
+    &self.components[i]
+  }
+
+  /// 頂点 $i$ を含む連結成分の頂点数を返す
+  pub fn vertex_count(&mut self, i: usize) -> usize {
+    self.component(i).vertices
+  }
+
+  /// 頂点 $i$ を含む連結成分の辺数を返す
+  pub fn edge_count(&mut self, i: usize) -> usize {
+    self.component(i).edges
+  }
+
+  /// それぞれの連結成分の頂点リストを返す
+  pub fn groups(&mut self) -> Vec<Vec<usize>> {
+    let n = self.components.len();
+    let mut groups = vec![vec![]; n];
+    for i in 0 .. n {
+      groups[self.leader(i)].push(i);
+    }
+    groups.into_iter().filter(|group| group.len() > 0).collect::<Vec<_>>()
+  }
+
+  /// すべての連結成分を走査する
+  pub fn each_component<F: FnMut(&UnionFindComponent)>(&mut self, mut f: F) {
+    let n = self.components.len();
+    let mut visited = vec![false; n];
+    for mut i in 0 .. n {
+      i = self.leader(i);
+      if !visited[i] {
+        visited[i] = true;
+        (f)(&self.components[i]);
+      }
+    }
+  }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct UnionFindComponent {
+  root: usize,
+  vertices: usize,
+  edges: usize,
+}
+impl UnionFindComponent {
+  pub fn new(i: usize) -> Self {
+    Self {
+      root: i,
+      vertices: 1,
+      edges: 0,
+    }
+  }
+
+  /// 連結成分を代表する頂点を返す
+  pub fn root(&self) -> usize {
+    self.root
+  }
+
+  /// 連結成分の頂点数を返す
+  pub fn vertices(&self) -> usize {
+    self.vertices
+  }
+
+  /// 連結成分の辺数を返す
+  pub fn edges(&self) -> usize {
+    self.edges
+  }
 }
 
 use std::cell::RefCell;
