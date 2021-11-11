@@ -219,6 +219,30 @@ pub trait Graph<E>: Sized {
     dp
   }
 
+  /// DAGを走査する
+  fn dag_traverse<Fe: FnMut(EdgeInfo<'_, E>), Fl: FnMut(usize)>(&self, mut f_edge: Fe, mut f_leaf: Fl) {
+    let mut indeg = vec![0; self.n()];
+    self.each_edge(|e| {
+      indeg[e.to()] += 1;
+    });
+    let mut stack = vec![];
+    for i in 0 .. self.n() {
+      if indeg[i] == 0 {
+        (f_leaf)(i);
+        stack.push(i);
+      }
+    }
+    while let Some(u) = stack.pop() {
+      self.each_edge_from(u, |e| {
+        (f_edge)(EdgeInfo::new(u, e.to(), e.weight()));
+        indeg[e.to()] -= 1;
+        if indeg[e.to()] == 0 {
+          stack.push(e.to());
+        }
+      });
+    }
+  }
+
   // 距離など
 
   /// 重みなし木の直径を計算する
