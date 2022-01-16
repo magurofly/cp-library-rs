@@ -22,6 +22,7 @@ use std::hash::Hash;
 use std::collections::*;
 use std::iter::*;
 use std::ops::Add;
+use std::ops::Neg;
 
 pub fn say(x: impl fmt::Display) { println!("{}", x); }
 
@@ -40,21 +41,24 @@ pub trait MyItertools : Iterator {
   fn cumulate<Op: Fn(Self::Item, Self::Item) -> Self::Item, Inv: Fn(Self::Item) -> Self::Item>(self, init: Self::Item, op: Op, inv: Inv) -> Cumulated<Self::Item, Op, Inv> where Self: Sized, Self::Item: Copy {
     Cumulated::new(self, init, op, inv)
   }
-  fn cumsum(self) -> Cumulated<Self::Item, Box<dyn Fn(Self::Item, Self::Item) -> Self::Item>, Box<dyn Fn(Self::Item) -> Self::Item>> where Self: Sized, Self::Item: Copy + Num {
-    Cumulated::new(self, Self::Item::zero(), Box::new(|x, y| x + y), Box::new(|x| Self::Item::zero() - x))
+  fn cumsum(self) -> Cumulated<Self::Item, fn(Self::Item, Self::Item) -> Self::Item, fn(Self::Item) -> Self::Item> where Self: Sized, Self::Item: Copy + Num + Neg<Output = Self::Item> {
+    Cumulated::new(self, Self::Item::zero(), Add::add, Neg::neg)
   }
+  fn map_into<T: From<Self::Item>>(self) -> std::iter::Map<Self, fn(Self::Item) -> T> where Self: Sized { self.map(T::from) }
 }
 impl<T: ?Sized> MyItertools for T where T: Iterator {}
 
 pub trait MyIntoIter : IntoIterator where Self: Sized {
   fn convert<U, V: FromIterator<U>>(self, f: impl FnMut(Self::Item) -> U) -> V { self.into_iter().map(f).collect() }
   fn implode(self, sep: &str) -> String where Self::Item: fmt::Display { self.into_iter().map(|x| format!("{}", x)).to_vec().join(sep) }
-  fn with_index(self) -> Map<Enumerate<Self::IntoIter>, Box<dyn FnMut((usize, Self::Item)) -> (Self::Item, usize)>> { self.into_iter().enumerate().map(Box::new(|(i, x)| (x, i))) }
+  fn with_index(self) -> Map<Enumerate<Self::IntoIter>, fn((usize, Self::Item)) -> (Self::Item, usize)> { self.into_iter().enumerate().map(reverse2) }
   fn it(&self) -> Self::IntoIter where Self: Clone { self.clone().into_iter() }
   fn clone_iter<'a, T: 'a + Clone>(self) -> Cloned<Self::IntoIter> where Self: IntoIterator<Item = &'a T> { self.into_iter().cloned() }
   fn count_if<F: FnMut(&Self::Item) -> bool>(self, f: F) -> usize { self.into_iter().filter(f).count() }
 }
 impl<T> MyIntoIter for T where T: IntoIterator {}
+
+fn reverse2<T, U>((x, y): (T, U)) -> (U, T) { (y, x) }
 
 pub trait MyOrd : PartialOrd + Sized {
   // fn max(self, other: Self) -> Self { if &self < &other { other } else { self } }
