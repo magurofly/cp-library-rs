@@ -25,7 +25,6 @@ impl MaxFlowArc {
   pub fn residual_cap(&self) -> i64 { self.capacity - self.flow }
 }
 impl MaxFlowGraph {
-  // ref: https://ei1333.github.io/library/graph/flow/dinic-capacity-scaling.hpp.html
   /// 頂点のないグラフを初期化する
   pub fn new() -> Self { Self { graph: vec![], arcs: vec![], max_cap: 0, cap_sum: 0 } }
   /// 頂点数
