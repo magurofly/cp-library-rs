@@ -8,7 +8,7 @@
 - https://misawa.github.io/others/flow/library_design.html
 
 ```rs
-//UPDATE: 2022-08-06 20:05
+//UPDATE: 2022-08-10 02:51
 pub struct MaxFlowGraph {
   graph: Vec<Vec<usize>>,
   arcs: Vec<MaxFlowArc>,
