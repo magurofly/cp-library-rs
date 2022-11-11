@@ -11,17 +11,14 @@
 
 ## 使い方
 
-### デフォルトの mod を設定
-
+### mod 998244353
 ```rust
-use modint::ModInt;
 
-// mod を設定
-ModInt::set_mod(998244353);
+type Mint = ModInt998244353;
 
 // 入力
 proconio::input! {
-  k: ModInt<i64>,
+  k: Mint,
 }
 
 // 出力
@@ -31,8 +28,12 @@ println!("{}", k * 2 + 1);
 ### 異なる mod を使う
 
 ```rust
-let x = ModInt::with_mod(100, 998244353);
-let y = ModInt::with_mod(200, 998244853);
+#[derive(Default, Clone, Copy)]
+struct Mod924844033;
+impl Modulus for Mod924844033 {
+  fn value(&self) -> i64 { 924844033 }
+}
+type Mint = ModInt<Mod924844033>;
 ```
 
 ## コード
