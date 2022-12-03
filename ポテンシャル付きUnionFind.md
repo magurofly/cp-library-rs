@@ -58,3 +58,6 @@ impl PotentializedUnionFind {
     }
 }
 ```
+
+## 参考
+- https://ei1333.github.io/luzhiled/snippets/structure/union-find.html
