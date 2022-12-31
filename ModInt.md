@@ -78,7 +78,7 @@ pub mod modint {
 
   impl<M: Modulus> ModInt<M> {
     pub fn new<N: Integer>(value: N, modulus: M) -> Self { Self { value: value.into_i64().rem_euclid(modulus.value()), modulus } }
-    pub fn value(&self) -> i64 { self.value }
+    pub fn value(&self) -> i64 { self.value.rem_euclid(self.modulus()) }
     pub fn pow(&self, mut n: u64) -> Self { let mut r = self.make(1); let mut a = *self; while n != 0 { if (n & 1) == 1 { r *= a; } a = a * a; n >>= 1; } r }
     pub fn inv(&self) -> Self { let (g, value) = ext_gcd(self.value, self.modulus()); assert!(g == 1, "value and modulus are not coprime"); Self { value, modulus: self.modulus } }
     fn make<N: Integer>(&self, n: N) -> Self { Self::new(n, self.modulus) }
