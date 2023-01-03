@@ -11,10 +11,16 @@ Mo's Algorithm を用いて、静的な配列に対する区間クエリを、�
 - 構造体を作り、 `impl Mo` する
 - 構造体に配列のデータを持たせる
 
+# 使用例
+
+- [ABC242 G - Range Pairing Query](https://atcoder.jp/contests/abc242/submissions/37714573)
+
 # コード
 
 ```Rust
-pub trait Mo<T: Default> {
+pub trait Mo {
+  type Output: Default;
+  
   /// `i` 番目の要素を追加する
   fn add(&mut self, i: usize) {
     unimplemented!();
@@ -46,10 +52,10 @@ pub trait Mo<T: Default> {
   }
 
   /// 現在見ている区間に対するクエリに答える
-  fn query(&self) -> T;
+  fn query(&self) -> Self::Output;
 
   /// 長さ `n` に対する右半開区間クエリ `queries` を Mo's Algorithm によって処理する
-  fn mo(&mut self, n: usize, queries: &[(usize, usize)]) -> Vec<T> {
+  fn mo(&mut self, n: usize, queries: &[(usize, usize)]) -> Vec<Self::Output> {
     let q = queries.len();
     let width = (n as f64).sqrt() as usize;
     let mut left = Vec::with_capacity(q);
@@ -71,7 +77,7 @@ pub trait Mo<T: Default> {
     let mut ans = Vec::new();
     let mut l = 0;
     let mut r = 0;
-    ans.resize_with(q, T::default);
+    ans.resize_with(q, Default::default);
     for i in order {
       while l > left[i] {
         l -= 1;
