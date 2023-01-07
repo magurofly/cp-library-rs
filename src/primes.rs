@@ -55,6 +55,9 @@ pub mod primes {
     }
 
     pub fn prime_division_pairs<N: PrimInt>(&self, n: N) -> Vec<(N, usize)> {
+      if n.is_one() {
+        return vec![];
+      }
       let pd = self.prime_division(n);
       let mut prev_p = pd[0];
       let mut e = 0;
