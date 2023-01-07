@@ -1,5 +1,6 @@
+use primes::*;
 pub mod primes {
-  // Last Update: 2021-06-27 20:15
+  // Last Update: 2023-01-07 10:00
   
   pub struct LinearSieve { limit: usize, primes: Vec<usize>, table: Vec<usize> }
   impl LinearSieve {
@@ -52,6 +53,25 @@ pub mod primes {
       }
       divisors
     }
+
+    pub fn prime_division_pairs<N: PrimInt>(&self, n: N) -> Vec<(N, usize)> {
+      let pd = self.prime_division(n);
+      let mut prev_p = pd[0];
+      let mut e = 0;
+      let mut pairs = vec![];
+      for p in pd.into_iter().chain(Some(N::one())) {
+        if p == prev_p {
+          e += 1;
+        } else {
+          pairs.push((prev_p, e));
+
+          prev_p = p;
+          e = 1;
+        }
+      }
+      pairs
+    }
+
     fn index(n: usize) -> usize { n / 30 << 3 | Self::I[n % 30] }
   }
   
