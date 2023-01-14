@@ -43,7 +43,7 @@ pub mod bit_multiset {
     }
     pub fn remove_multiple(&mut self, x: usize, count: usize) -> usize {
       let actual = self.count(x).min(count);
-      self.add(x, actual as isize);
+      self.add(x, -(actual as isize));
       actual
     }
     pub fn remove(&mut self, x: usize) -> bool {
