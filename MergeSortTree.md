@@ -7,6 +7,7 @@
 
 # コード
 ```rs
+#[derive(Clone, Debug)]
 pub struct MergeSortTree<T> {
     len: usize,
     n: usize,
@@ -18,18 +19,18 @@ impl<T: Clone + Ord> MergeSortTree<T> {
     pub fn new(slice: &[T]) -> Self {
         let len = slice.len();
         let n = len.next_power_of_two();
-        let mut data = vec![vec![]; n + len];
+        let mut data = vec![vec![]; 2 * n];
         for i in 0 .. slice.len() {
             data[n + i].push(slice[i].clone());
         }
-        for i in (1 .. slice.len()).rev() {
+        for i in (1 .. n).rev() {
             let (dst, src) = data.split_at_mut(i * 2);
             Self::merge(&mut dst[i], &src[0], &src[1]);
         }
         Self { len, n, data }
     }
 
-    /// count items in `index_range` contained in `value_range`
+    /// count items in `index_range` such that contained in `value_range`
     /// time complexity: O(log^2 n)
     pub fn count(&self, index_range: impl std::ops::RangeBounds<usize>, value_range: impl std::ops::RangeBounds<T>) -> usize {
         use std::ops::Bound::*;
@@ -76,7 +77,7 @@ impl<T: Clone + Ord> MergeSortTree<T> {
                 dst.push(src1[i].clone());
                 i += 1;
             } else {
-                dst.push(src2[i].clone());
+                dst.push(src2[j].clone());
                 j += 1;
             }
         }
