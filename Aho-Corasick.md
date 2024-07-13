@@ -1,4 +1,4 @@
-# Aho-Corasick
+# Aho—Corasick
 
 複数のパターンを文字列から検索する。未 Verify
 
