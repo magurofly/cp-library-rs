@@ -1,28 +1,30 @@
 use primes::*;
 pub mod primes {
-  // Last Update: 2023-01-07 10:00
+  // Last Update: 2025-01-12 18:20
   
   pub struct LinearSieve { limit: usize, primes: Vec<usize>, table: Vec<usize> }
   impl LinearSieve {
-    const R: [usize; 8] = [1, 7, 11, 13, 17, 19, 23, 29];
-    const I: [usize; 30] = [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 7];
+    const REM: [usize; 8] = [1, 7, 11, 13, 17, 19, 23, 29];
+    const IDX: [usize; 30] = [8, 0, 8, 8, 8, 8, 8, 1, 8, 8, 8, 2, 8, 3, 8, 8, 8, 4, 8, 5, 8, 8, 8, 6, 8, 8, 8, 8, 8, 7];
     
-    pub fn new<N: PrimInt>(n: N) -> Self {
-      let n: usize = cast(n);
-      let mut primes = vec![2, 3, 5];
-      let mut table = vec![0; Self::index(n) + 1];
-      for i in 1..=Self::index(n) {
-        let d = 30 * (i >> 3) + Self::R[i & 7];
-        if table[i] == 0 {
-          table[i] = d;
-          primes.push(d);
+    pub fn new<N: PrimInt>(limit: N) -> Self {
+      let limit: usize = cast(limit);
+      let mut table = vec![1; (limit + 29) / 30 * 8 + 1];
+      let mut primes = Vec::with_capacity(32);
+      for i in 1 .. table.len() {
+        let n = 30 * (i >> 3) + Self::REM[i & 7];
+        if table[i] == 1 {
+          table[i] = n;
+          primes.push(n);
         }
-        for &p in &primes[3..] {
-          if p * d > n || p > table[i] { break; }
-          table[Self::index(p * d)] = p;
+        for &p in &primes {
+          if n * p > limit || p > table[i] {
+            break;
+          }
+          table[n * p / 30 << 3 | Self::IDX[n * p % 30]] = p;
         }
       }
-      Self { limit: n, primes, table }
+      Self { limit, table, primes }
     }
     
     pub fn is_prime<N: PrimInt>(&self, n: N) -> bool {
@@ -53,7 +55,7 @@ pub mod primes {
       }
       divisors
     }
-
+    
     pub fn prime_division_pairs<N: PrimInt>(&self, n: N) -> Vec<(N, usize)> {
       if n.is_one() {
         return vec![];
@@ -67,15 +69,15 @@ pub mod primes {
           e += 1;
         } else {
           pairs.push((prev_p, e));
-
+          
           prev_p = p;
           e = 1;
         }
       }
       pairs
     }
-
-    fn index(n: usize) -> usize { n / 30 << 3 | Self::I[n % 30] }
+    
+    fn index(n: usize) -> usize { n / 30 << 3 | Self::IDX[n % 30] }
   }
   
   pub fn prime_division<N: PrimInt>(n: N) -> Vec<N> {
@@ -111,7 +113,7 @@ pub mod primes {
     }
     true
   }
-
+  
   pub fn pow_mod<N: PrimInt>(a: N, e: N, m: N) -> N {
     let (mut a, mut e, m): (i64, i64, i64) = (cast(a % m), cast(e),cast(m));
     let mut r = 1;
@@ -122,11 +124,11 @@ pub mod primes {
     }
     cast(r)
   }
-
+  
   pub fn inv_mod<N: PrimInt>(a: N, m: N) -> N {
     pow_mod(a, m - N::one() - N::one(), m)
   }
-
+  
   pub fn ext_gcd<N: PrimInt>(a: N, b: N) -> (N, N) {
     if a.is_zero() { return (b, N::zero()); }
     let (mut s, mut t): (i64, i64) = (cast(b), cast(a % b));
@@ -142,7 +144,7 @@ pub mod primes {
     if m0 < 0 { m0 += b / s; }
     (cast(s), cast(m0))
   }
-
+  
   pub fn inv_gcd<N: PrimInt>(a: N, m: N) -> Option<N> {
     let (g, x) = ext_gcd(a, m);
     if g.is_one() { Some(x) } else { None }
@@ -150,6 +152,6 @@ pub mod primes {
   
   use num_traits::*;
   use std::mem::*;
-
+  
   fn cast<N: PrimInt>(n: impl NumCast) -> N { N::from(n).unwrap() }
 }
