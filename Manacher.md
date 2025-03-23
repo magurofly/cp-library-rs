@@ -1,5 +1,5 @@
 # Manacher
-文字列の各位置について、そこを中心とする回文長を求める。
+文字列の各位置について、そこを中心とする回文長を $O(|S|)$ で求める。
 
 本来は回文「半径」を求めるアルゴリズムだが、回文「長」のほうが偶数長・奇数長の回文を統一して扱えるなどの利点があるため回文長としている。
 
@@ -67,3 +67,9 @@ impl<T: PartialEq> PartialEq for WildCardPattern<T> {
     }
 }
 ```
+
+## 参考
+- [https://snuke.hatenablog.com/entry/2014/12/02/235837]
+- [https://klee.hatenablog.jp/entry/2020/06/18/210754]
+- [https://ei1333.github.io/luzhiled/snippets/string/manacher.html]
+- [https://tjkendev.github.io/procon-library/python/string/manacher.html]
