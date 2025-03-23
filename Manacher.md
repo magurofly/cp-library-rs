@@ -6,18 +6,18 @@
 ## コード
 ```rust
 /// 列の各位置に対して、そこを中心としてできる最長回文の長さを求める
-/// 列の長さが `n` とするとき、長さ `2 * n - 1` の Vec を返す
+/// 列の長さを `n` とするとき、長さ `2 * n - 1` の Vec を返す
 /// - `2 * i`: `i` 番目の文字を中心とする奇数長の回文
 /// - `2 * i + 1`: `i` 番目の文字の直後を中心とする偶数長の回文
 fn manacher<T: PartialEq>(slice: &[T]) -> Vec<usize> {
     // slice の各文字の間にセパレータを入れた文字列を考える（例： "hello" -> "h.e.l.l.o"）
-    let n = slice.len() * 2 - 1;
-    let mut rad = vec![0; n];
+    let m = slice.len() * 2 - 1;
+    let mut rad = vec![0; m];
     let mut c = 0;
     let mut r = 0;
-    while c < n {
+    while c < m {
         // c を中心とする最長回文半径を愚直に求める
-        while r <= c && c + r < n && ((c + r) % 2 == 1 || slice[(c - r) / 2] == slice[(c + r) / 2]) {
+        while r <= c && c + r < m && ((c + r) % 2 == 1 || slice[(c - r) / 2] == slice[(c + r) / 2]) {
             r += 1;
         }
         rad[c] = r;
@@ -32,8 +32,10 @@ fn manacher<T: PartialEq>(slice: &[T]) -> Vec<usize> {
     }
     // セパレータが端になる分をキャンセル
     let mut len = rad;
-    for i in 1 .. n.saturating_sub(1) {
-        len[i] -= 1;
+    for i in 0 .. m {
+        if (i + len[i]) % 2 == 0 {
+            len[i] -= 1;
+        }
     }
     len
 }
