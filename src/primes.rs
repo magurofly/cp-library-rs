@@ -1,27 +1,23 @@
 use primes::*;
 pub mod primes {
-  // Last Update: 2025-01-12 18:20
+  // Last Update: 2025-07-19 05:13
   
   pub struct LinearSieve { limit: usize, primes: Vec<usize>, table: Vec<usize> }
   impl LinearSieve {
-    const REM: [usize; 8] = [1, 7, 11, 13, 17, 19, 23, 29];
-    const IDX: [usize; 30] = [8, 0, 8, 8, 8, 8, 8, 1, 8, 8, 8, 2, 8, 3, 8, 8, 8, 4, 8, 5, 8, 8, 8, 6, 8, 8, 8, 8, 8, 7];
-    
     pub fn new<N: PrimInt>(limit: N) -> Self {
-      let limit: usize = cast(limit);
-      let mut table = vec![1; (limit + 29) / 30 * 8 + 1];
+      let limit = cast::<usize>(limit);
+      let mut table = (0 ..= limit).collect::<Vec<_>>();
+      table[1] = 0;
       let mut primes = Vec::with_capacity(32);
-      for i in 1 .. table.len() {
-        let n = 30 * (i >> 3) + Self::REM[i & 7];
-        if table[i] == 1 {
-          table[i] = n;
+      for n in 2 ..= limit {
+        if table[n] == n {
           primes.push(n);
         }
         for &p in &primes {
-          if n * p > limit || p > table[i] {
+          if n * p > limit || p > table[n] {
             break;
           }
-          table[n * p / 30 << 3 | Self::IDX[n * p % 30]] = p;
+          table[n * p] = p;
         }
       }
       Self { limit, table, primes }
@@ -30,7 +26,7 @@ pub mod primes {
     pub fn is_prime<N: PrimInt>(&self, n: N) -> bool {
       let n: usize = cast(n);
       assert!(n <= self.limit);
-      n == 2 || n == 3 || n == 5 || n % 2 != 0 && n % 3 != 0 && n % 5 != 0 && self.table[Self::index(n)] == n
+      n > 1 && self.table[n] == n
     }
     
     pub fn primes<N: PrimInt>(&self) -> Vec<N> { self.primes.iter().map(|&n| cast(n) ).collect::<Vec<_>>() }
@@ -38,46 +34,25 @@ pub mod primes {
     pub fn least_prime_factor<N: PrimInt>(&self, n: N) -> N {
       let n: usize = cast(n);
       assert!(n <= self.limit);
-      if n % 2 == 0 { return cast(2); }
-      if n % 3 == 0 { return cast(3); }
-      if n % 5 == 0 { return cast(5); }
-      cast(self.table[Self::index(n)])
+      cast(self.table[n])
     }
     
-    pub fn prime_division<N: PrimInt>(&self, n: N) -> Vec<N> {
+    pub fn prime_division<N: PrimInt>(&self, n: N) -> Vec<(N, usize)> {
       let mut n: usize = cast(n);
       assert!(n <= self.limit);
       let mut divisors = vec![];
       while n > 1 {
-        let d = self.least_prime_factor(n);
-        n /= d;
-        divisors.push(cast(d));
+        let p = self.table[n];
+        n /= p;
+        let mut e = 1;
+        while self.table[n] == p {
+            n /= p;
+            e += 1;
+        }
+        divisors.push((cast(p), e));
       }
       divisors
     }
-    
-    pub fn prime_division_pairs<N: PrimInt>(&self, n: N) -> Vec<(N, usize)> {
-      if n.is_one() {
-        return vec![];
-      }
-      let pd = self.prime_division(n);
-      let mut prev_p = pd[0];
-      let mut e = 0;
-      let mut pairs = vec![];
-      for p in pd.into_iter().chain(Some(N::one())) {
-        if p == prev_p {
-          e += 1;
-        } else {
-          pairs.push((prev_p, e));
-          
-          prev_p = p;
-          e = 1;
-        }
-      }
-      pairs
-    }
-    
-    fn index(n: usize) -> usize { n / 30 << 3 | Self::IDX[n % 30] }
   }
   
   pub fn prime_division<N: PrimInt>(n: N) -> Vec<N> {
