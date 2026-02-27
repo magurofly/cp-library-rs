@@ -49,9 +49,11 @@ impl<T: Clone + Ord> MergeSortTree<T> {
 
     fn count_l(&self, index_range: &impl std::ops::RangeBounds<usize>, a: std::ops::Bound<&T>) -> usize {
         use std::ops::Bound::*;
-        let mut l = self.n + match index_range.start_bound() { Included(&l) => l, Excluded(&r) => r + 1, Unbounded => 0 };
-        let mut r = self.n + match index_range.end_bound() { Included(&r) => r.saturating_sub(1), Excluded(&r) => r, Unbounded => self.len };
+        let mut l = match index_range.start_bound() { Included(&l) => l, Excluded(&r) => r + 1, Unbounded => 0 };
+        let mut r = match index_range.end_bound() { Included(&r) => r.saturating_sub(1), Excluded(&r) => r, Unbounded => self.len };
         assert!(r <= self.len);
+        l += self.n;
+        r += self.n;
         let mut count = 0;
         while l < r {
             if l & 1 != 0 {
