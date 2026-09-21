@@ -1,6 +1,8 @@
 # 要素のON/OFF可能なMergeSortTree
 
-`.set(i, state)` で $i$ 番目の要素が存在する/しないを切り替えることができる。
+$i$ 番目の要素が存在する/しないを切り替えることができる。
+
+可換モノイドを乗せることができる。
 
 - `ToggleableMergeSortTree::new(slice)`: `slice` から構築する（初期状態ではどの要素も存在しない）
 - `ToggleableMergeSortTree::with_state(slice, states)`: `slice` と初期状態を指定して構築する
