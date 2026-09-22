@@ -384,14 +384,14 @@ pub mod toggleable_mergesorttree_group {
             prod
         }
 
-        pub fn max_right(&self, l: usize, value_range: impl std::ops::RangeBounds<G::S>, mut predicate: impl FnMut(&G::S) -> bool) -> usize {
+        pub fn max_right(&self, l: usize, value_range: impl std::ops::RangeBounds<G::S> + Clone, mut predicate: impl FnMut(&G::S) -> bool) -> usize {
             let mut d = self.tree.len().next_power_of_two() / 2;
             let mut r = 0;
-            let mut x = G::identity();
+            let mut x = G::inverse(&self.prod(.. l, value_range.clone()));
             while d != 0 {
                 if d + r < self.tree.len() {
                     let y = G::binary_operation(&x, &self.prod_sub(d + r, &value_range));
-                    if predicate(&y) {
+                    if d + r <= l || predicate(&y) {
                         x = y;
                         r += d;
                     }
