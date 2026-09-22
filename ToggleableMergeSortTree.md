@@ -6,8 +6,9 @@ $i$ 番目の要素が存在する/しないを切り替えることができる
 
 - `ToggleableMergeSortTree::new(slice)`: `slice` から構築する（初期状態ではどの要素も存在しない）
 - `ToggleableMergeSortTree::with_state(slice, states)`: `slice` と初期状態を指定して構築する
-- `set(&mut self, i: usize, state: bool)`: `i` 番目の要素の状態を変更する
-- `prod(&self, index_range: impl RangeBounds<usize>, value_range: impl RangeBounds<M::S>) -> M::S`: 位置と値の区間を指定し、モノイド積を得る
+- `set(&mut self, i, state)`: `i` 番目の要素の状態を `state` に変更する
+- `prod(&self, index_range, value_range) -> M::S`: 位置と値の区間を指定し、モノイド積を得る
+- `max_right(&self, l, value_range, predicate)`, `min_left(&self, r, value_range, predicate)`: 二分探索する（ACL セグメント木の `max_right`, `min_left` と同様の機能）
 
 ## コード
 
@@ -15,6 +16,8 @@ $i$ 番目の要素が存在する/しないを切り替えることができる
 use ac_library::{Segtree, Monoid};
 
 #[derive(Clone)]
+/// 要素の ON/OFF 可能な MergeSortTree (位置の区間と値の区間を両方指定してモノイド積を得られるデータ構造)
+/// 任意の $i$ について、 $i$ 番目の要素が存在する/しないを切り替えることができる
 pub struct ToggleableMergeSortTree<M: Monoid> {
     len: usize,
     n: usize,
@@ -24,6 +27,7 @@ pub struct ToggleableMergeSortTree<M: Monoid> {
     position: Vec<Vec<(u32, u32)>>,
 }
 impl<M: Monoid> ToggleableMergeSortTree<M> where M::S: Clone + Ord {
+    /// 要素 `values` と初期状態 `states` を指定して構築する
     pub fn with_states(values: &[M::S], states: &[bool]) -> Self {
         assert!(values.len() == states.len());
         let values = values.to_vec();
@@ -56,6 +60,7 @@ impl<M: Monoid> ToggleableMergeSortTree<M> where M::S: Clone + Ord {
         Self { len, n, values, position, indices, tree }
     }
 
+    /// `values` から構築する（初期状態: すべて存在しない）
     pub fn new(values: &[M::S]) -> Self {
         Self::with_states(values, &vec![false; values.len()])
     }
@@ -77,6 +82,7 @@ impl<M: Monoid> ToggleableMergeSortTree<M> where M::S: Clone + Ord {
         dst.extend_from_slice(&src2[j ..]);
     }
 
+    /// `i` 番目の要素の状態を `state` にする
     pub fn set(&mut self, i: usize, state: bool) {
         assert!(i < self.len);
         if state {
@@ -90,6 +96,22 @@ impl<M: Monoid> ToggleableMergeSortTree<M> where M::S: Clone + Ord {
         }
     }
 
+    fn prod_sub(&self, k: usize, value_range: &impl std::ops::RangeBounds<M::S>) -> M::S {
+        use std::ops::Bound::*;
+        let i0 = match value_range.start_bound() {
+            Included(a) => self.indices[k].partition_point(|&i| &self.values[i as usize] < a ),
+            Excluded(a) => self.indices[k].partition_point(|&i| &self.values[i as usize] <= a ),
+            Unbounded => 0,
+        };
+        let i1 = match value_range.end_bound() {
+            Included(a) => self.indices[k].partition_point(|&i| &self.values[i as usize] <= a ),
+            Excluded(a) => self.indices[k].partition_point(|&i| &self.values[i as usize] < a ),
+            Unbounded => self.indices[k].len(),
+        };
+        self.tree[k].prod(i0 .. i1)
+    }
+
+    /// 位置が `index_range` に含まれ、値が `value_range` に含まれる要素のモノイド積を得る
     pub fn prod(&self, index_range: impl std::ops::RangeBounds<usize>, value_range: impl std::ops::RangeBounds<M::S>) -> M::S {
         use std::ops::Bound::*;
         let mut l = match index_range.start_bound() { Included(&l) => l, Excluded(&r) => r + 1, Unbounded => 0 };
@@ -101,21 +123,77 @@ impl<M: Monoid> ToggleableMergeSortTree<M> where M::S: Clone + Ord {
         let mut prod_r = M::identity();
         while l < r {
             if l & 1 != 0 {
-                let i0 = self.indices[l].partition_point(|&i| match value_range.start_bound() { Included(a) => &self.values[i as usize] < a, Excluded(a) => &self.values[i as usize] <= a, Unbounded => false });
-                let i1 = self.indices[l].partition_point(|&i| match value_range.end_bound() { Included(a) => &self.values[i as usize] <= a, Excluded(a) => &self.values[i as usize] < a, Unbounded => true });
-                prod_l = M::binary_operation(&prod_l, &self.tree[l].prod(i0 .. i1));
+                prod_l = M::binary_operation(&prod_l, &self.prod_sub(l, &value_range));
                 l += 1;
             }
             l >>= 1;
             if r & 1 != 0 {
                 r -= 1;
-                let i0 = self.indices[r].partition_point(|&i| match value_range.start_bound() { Included(a) => &self.values[i as usize] < a, Excluded(a) => &self.values[i as usize] <= a, Unbounded => false });
-                let i1 = self.indices[r].partition_point(|&i| match value_range.end_bound() { Included(a) => &self.values[i as usize] <= a, Excluded(a) => &self.values[i as usize] < a, Unbounded => true });
-                prod_r = M::binary_operation(&self.tree[r].prod(i0 .. i1), &prod_r);
+                prod_r = M::binary_operation(&self.prod_sub(r, &value_range), &prod_r);
             }
             r >>= 1;
         }
         M::binary_operation(&prod_l, &prod_r)
+    }
+
+    /// 位置が `l..r` に含まれ、値が `value_range` に含まれる要素のモノイド積が `predicate` を満たすような最大の `r` を得る
+    pub fn max_right(&self, mut l: usize, value_range: impl std::ops::RangeBounds<M::S>, mut predicate: impl FnMut(&M::S) -> bool) -> usize {
+        assert!(l <= self.len);
+        assert!(predicate(&M::identity()));
+        if l == self.len { return self.len; }
+        l += self.n;
+        let mut x = M::identity();
+        loop {
+            l >>= l.trailing_zeros();
+            let y = M::binary_operation(&x, &self.prod_sub(l, &value_range));
+            if !predicate(&y) {
+                while l < self.n {
+                    l *= 2;
+                    let y = M::binary_operation(&x, &self.prod_sub(l, &value_range));
+                    if predicate(&y) {
+                        x = y;
+                        l += 1;
+                    }
+                }
+                return l - self.n;
+            }
+            x = y;
+            l += 1;
+            if l.is_power_of_two() {
+                break;
+            }
+        }
+        self.len
+    }
+
+    /// 位置が `l..r` に含まれ、値が `value_range` に含まれる要素のモノイド積が `predicate` を満たすような最小の `l` を得る
+    pub fn min_left(&self, mut r: usize, value_range: impl std::ops::RangeBounds<M::S>, mut predicate: impl FnMut(&M::S) -> bool) -> usize {
+        assert!(r <= self.len);
+        assert!(predicate(&M::identity()));
+        if r == 0 { return 0; }
+        r += self.n;
+        let mut x = M::identity();
+        loop {
+            r -= 1;
+            r >>= r.trailing_ones();
+            let y = M::binary_operation(&self.prod_sub(r, &value_range), &x);
+            if !predicate(&y) {
+                while r < self.n {
+                    r = 2 * r + 1;
+                    let y = M::binary_operation(&self.prod_sub(r, &value_range), &x);
+                    if predicate(&y) {
+                        x = y;
+                        r -= 1;
+                    }
+                }
+                return r + 1 - self.n;
+            }
+            x = y;
+            if r.is_power_of_two() {
+                break;
+            }
+        }
+        0
     }
 }
 
