@@ -12,6 +12,8 @@ $i$ 番目の要素が存在する/しないを切り替えることができる
 
 ## コード
 
+<details><summary>コードを展開</summary>
+    
 ```rs
 use ac_library::{Segtree, Monoid};
 
@@ -198,3 +200,215 @@ impl<M: Monoid> ToggleableMergeSortTree<M> where M::S: Clone + Ord {
 }
 
 ```
+
+</details>
+
+## 群ver
+群にすることで Fenwick Tree 構造が使えるようになり 2 倍くらい高速化できる。
+以下のトレイトを実装する必要がある。
+
+```rust
+pub trait Group: Monoid {
+  fn inverse(x: &<Self as Monoid>::S) -> <Self as Monoid>::S;
+}
+```
+
+### コード
+<details><summary>コードを展開</summary>
+
+```rust
+pub mod toggleable_mergesorttree_group {
+    use ac_library::Monoid;
+    use std::ops::Bound::*;
+
+    pub trait Group: Monoid {
+        fn inverse(x: &<Self as Monoid>::S) -> <Self as Monoid>::S;
+    }
+
+    #[derive(Clone)]
+    /// 要素の ON/OFF 可能な MergeSortTree (位置の区間と値の区間を両方指定してモノイド積を得られるデータ構造)
+    /// 逆演算を要求することで log を一つ落とした
+    /// 任意の $i$ について、 $i$ 番目の要素が存在する/しないを切り替えることができる
+    pub struct ToggleableGroupMergeSortTree<G: Group> {
+        len: usize,
+        values: Vec<G::S>,
+        indices: Vec<Vec<u32>>,
+        states: Vec<bool>,
+        tree: Vec<Vec<G::S>>,
+        position: Vec<Vec<(u32, u32)>>,
+    }
+    impl<G: Group> ToggleableGroupMergeSortTree<G> where G::S: Clone + Ord {
+
+        /// 要素 `values` と初期状態 `states` を指定して構築する
+        pub fn with_states(values: Vec<G::S>, states: Vec<bool>) -> Self {
+            assert!(values.len() == states.len());
+            let len = values.len();
+            
+            let mut indices = Vec::with_capacity(len + 1);
+            indices.push(vec![]);
+            for i in 0 .. len as u32 {
+                indices.push(vec![i]);
+            }
+            for i in 1 ..= len {
+                let j = i + lsb(i);
+                if j <= len {
+                    let (front, back) = indices.split_at_mut(j);
+                    Self::merge(&values, &mut back[0], &front[i]);
+                }
+            }
+
+            let mut position = vec![vec![]; len];
+            for i in 1 ..= len {
+                for (j, &k) in indices[i].iter().enumerate() {
+                    position[k as usize].push((i as u32, j as u32));
+                }
+            }
+
+            let tree = indices.iter().map(|indices| {
+                let mut tree = vec![G::identity(); indices.len() + 1];
+                for (i, &j) in indices.iter().enumerate() {
+                    if states[j as usize] {
+                        tree[i + 1] = values[j as usize].clone();
+                    }
+                }
+                for i in 1 ..= indices.len() {
+                    let j = i + lsb(i);
+                    if j <= indices.len() {
+                        tree[j] = G::binary_operation(&tree[j], &tree[i]);
+                    }
+                }
+                tree
+            }).collect::<Vec<_>>();
+
+            Self { len, values, states, position, indices, tree }
+        }
+
+        /// `values` から構築する（初期状態: すべて存在しない）
+        pub fn new(values: Vec<G::S>) -> Self {
+            let states = vec![false; values.len()];
+            Self::with_states(values, states)
+        }
+
+        fn merge(values: &[G::S], dst: &mut Vec<u32>, src1: &[u32]) {
+            let src2 = std::mem::replace(dst, Vec::with_capacity(dst.len() + src1.len()));
+            let mut i = 0;
+            let mut j = 0;
+            while i < src1.len() && j < src2.len() {
+                if values[src1[i] as usize] <= values[src2[j] as usize] {
+                    dst.push(src1[i]);
+                    i += 1;
+                } else {
+                    dst.push(src2[j]);
+                    j += 1;
+                }
+            }
+            dst.extend_from_slice(&src1[i ..]);
+            dst.extend_from_slice(&src2[j ..]);
+        }
+
+        /// `i` 番目の要素の状態を `state` にする
+        pub fn set(&mut self, i: usize, state: bool) {
+            assert!(i < self.len);
+
+            if self.states[i] == state {
+                return;
+            }
+            self.states[i] = state;
+            
+            let add = if state { self.values[i].clone() } else { G::inverse(&self.values[i]) };
+
+            for &(t, p) in &self.position[i] {
+                let tree = &mut self.tree[t as usize];
+                let mut p = p as usize + 1;
+                while p < tree.len() {
+                    tree[p] = G::binary_operation(&tree[p], &add);
+                    p += lsb(p);
+                }
+            }
+        }
+
+        fn prod_sub(&self, k: usize, value_range: &impl std::ops::RangeBounds<G::S>) -> G::S {
+            let tree = &self.tree[k];
+
+            let mut i1 = match value_range.end_bound() {
+                Included(a) => self.indices[k].partition_point(|&i| &self.values[i as usize] <= a ),
+                Excluded(a) => self.indices[k].partition_point(|&i| &self.values[i as usize] < a ),
+                Unbounded => self.indices[k].len(),
+            };
+            let mut prod = G::identity();
+            {
+                while i1 != 0 {
+                    prod = G::binary_operation(&tree[i1], &prod);
+                    i1 -= lsb(i1);
+                }
+            }
+
+            let i0 = match value_range.start_bound() {
+                Included(a) => Some(self.indices[k].partition_point(|&i| &self.values[i as usize] < a )),
+                Excluded(a) => Some(self.indices[k].partition_point(|&i| &self.values[i as usize] <= a )),
+                Unbounded => None,
+            };
+            if let Some(mut i0) = i0 {
+                let mut sub = G::identity();
+                while i0 != 0 {
+                    sub = G::binary_operation(&tree[i0], &sub);
+                    i0 -= lsb(i0);
+                }
+                prod = G::binary_operation(&G::inverse(&sub), &prod);
+            }
+
+            prod
+        }
+
+        fn prod_prefix(&self, mut r: usize, value_range: &impl std::ops::RangeBounds<G::S>) -> G::S {
+            assert!(r <= self.len);
+
+            let mut prod = G::identity();
+            while r != 0 {
+                prod = G::binary_operation(&prod, &self.prod_sub(r, value_range));
+                r -= lsb(r);
+            }
+            prod
+        }
+
+        /// 位置が `index_range` に含まれ、値が `value_range` に含まれる要素のモノイド積を得る
+        pub fn prod(&self, index_range: impl std::ops::RangeBounds<usize>, value_range: impl std::ops::RangeBounds<G::S>) -> G::S {
+            let r = match index_range.end_bound() { Included(&r) => r.saturating_sub(1), Excluded(&r) => r, Unbounded => self.len };
+            assert!(r <= self.len);
+            let mut prod = self.prod_prefix(r, &value_range);
+            let l = match index_range.start_bound() { Included(&l) => Some(l), Excluded(&r) => Some(r + 1), Unbounded => None };
+            if let Some(l) = l {
+                let inv = G::inverse(&self.prod_prefix(l, &value_range));
+                prod = G::binary_operation(&inv, &prod);
+            }
+            prod
+        }
+
+        pub fn max_right(&self, l: usize, value_range: impl std::ops::RangeBounds<G::S>, mut predicate: impl FnMut(&G::S) -> bool) -> usize {
+            let mut d = self.tree.len().next_power_of_two() / 2;
+            let mut r = 0;
+            let mut x = G::identity();
+            while d != 0 {
+                if d + r < self.tree.len() {
+                    let y = G::binary_operation(&x, &self.prod_sub(d + r, &value_range));
+                    if predicate(&y) {
+                        x = y;
+                        r += d;
+                    }
+                }
+                d /= 2;
+            }
+            r
+        }
+    }
+
+    #[inline]
+    fn lsb(i: usize) -> usize {
+        i & i.wrapping_neg()
+    }
+}
+pub use toggleable_mergesorttree_group::*;
+
+```
+    
+</details>
